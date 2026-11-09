@@ -1,0 +1,515 @@
+{
+  "teams": [
+    {
+      "team_id": "T1",
+      "name": "T1",
+      "short_name": "T1",
+      "region": "LCK",
+      "founded_season": "S2",
+      "worlds_titles": 5,
+      "msi_titles": 2,
+      "aliases": [
+        "T1",
+        "SK Telecom T1",
+        "SKT T1",
+        "SKT",
+        "SK Telecom T1 K",
+        "SK Telecom T1 2",
+        "SKT T1 K"
+      ]
+    },
+    {
+      "team_id": "GEN",
+      "name": "Gen.G",
+      "short_name": "GEN",
+      "region": "LCK",
+      "founded_season": "S3",
+      "worlds_titles": 2,
+      "msi_titles": 2,
+      "aliases": [
+        "Gen.G",
+        "Gen.G Esports",
+        "GENG",
+        "GEN",
+        "KSV eSports",
+        "KSV",
+        "Samsung Galaxy",
+        "SSG",
+        "Samsung White",
+        "SSW",
+        "Samsung Blue",
+        "SSB",
+        "Samsung Ozone",
+        "MVP Ozone"
+      ]
+    },
+    {
+      "team_id": "DK",
+      "name": "Dplus KIA",
+      "short_name": "DK",
+      "region": "LCK",
+      "founded_season": "S9",
+      "worlds_titles": 1,
+      "msi_titles": 0,
+      "aliases": [
+        "Dplus KIA",
+        "Dplus",
+        "DK",
+        "DWG KIA",
+        "DAMWON Gaming",
+        "DWG"
+      ]
+    },
+    {
+      "team_id": "HLE",
+      "name": "Hanwha Life Esports",
+      "short_name": "HLE",
+      "region": "LCK",
+      "founded_season": "S5",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Hanwha Life Esports",
+        "HLE",
+        "ROX Tigers",
+        "ROX",
+        "KOO Tigers",
+        "GE Tigers",
+        "HUYA Tigers"
+      ]
+    },
+    {
+      "team_id": "KT",
+      "name": "KT Rolster",
+      "short_name": "KT",
+      "region": "LCK",
+      "founded_season": "S2",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "KT Rolster",
+        "KT",
+        "KT Rolster Arrows",
+        "KT Rolster Bullets",
+        "KTA",
+        "KTB"
+      ]
+    },
+    {
+      "team_id": "DRX",
+      "name": "DRX",
+      "short_name": "DRX",
+      "region": "LCK",
+      "founded_season": "S6",
+      "worlds_titles": 1,
+      "msi_titles": 0,
+      "aliases": [
+        "DRX",
+        "DragonX",
+        "Kingzone DragonX",
+        "KZ",
+        "Longzhu Gaming",
+        "LZ"
+      ]
+    },
+    {
+      "team_id": "AZF",
+      "name": "Azubu Frost",
+      "short_name": "AZF",
+      "region": "LCK",
+      "founded_season": "S2",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Azubu Frost",
+        "AZF",
+        "CJ Entus Frost",
+        "CJ Entus",
+        "MiG Frost",
+        "Azubu Blaze",
+        "NaJin Black Sword",
+        "NaJin White Shield"
+      ]
+    },
+    {
+      "team_id": "BLG",
+      "name": "Bilibili Gaming",
+      "short_name": "BLG",
+      "region": "LPL",
+      "founded_season": "S8",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Bilibili Gaming",
+        "BLG",
+        "Bilibili Gaming PingAn Bank",
+        "I May",
+        "IMAY"
+      ]
+    },
+    {
+      "team_id": "TES",
+      "name": "Top Esports",
+      "short_name": "TES",
+      "region": "LPL",
+      "founded_season": "S8",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Top Esports",
+        "TES",
+        "Topsports Gaming",
+        "TOP",
+        "DAN Gaming"
+      ]
+    },
+    {
+      "team_id": "JDG",
+      "name": "JD Gaming",
+      "short_name": "JDG",
+      "region": "LPL",
+      "founded_season": "S7",
+      "worlds_titles": 0,
+      "msi_titles": 1,
+      "aliases": [
+        "JD Gaming",
+        "JDG",
+        "JDG Intel Esports Club",
+        "QG Reapers"
+      ]
+    },
+    {
+      "team_id": "EDG",
+      "name": "EDward Gaming",
+      "short_name": "EDG",
+      "region": "LPL",
+      "founded_season": "S4",
+      "worlds_titles": 1,
+      "msi_titles": 1,
+      "aliases": [
+        "EDward Gaming",
+        "Edward Gaming",
+        "EDG",
+        "EDG Hycan"
+      ]
+    },
+    {
+      "team_id": "RNG",
+      "name": "Royal Never Give Up",
+      "short_name": "RNG",
+      "region": "LPL",
+      "founded_season": "S3",
+      "worlds_titles": 0,
+      "msi_titles": 3,
+      "aliases": [
+        "Royal Never Give Up",
+        "RNG",
+        "Star Horn Royal Club",
+        "SHRC",
+        "Royal Club",
+        "RYL",
+        "Royal Club Huang Zu"
+      ]
+    },
+    {
+      "team_id": "IG",
+      "name": "Invictus Gaming",
+      "short_name": "IG",
+      "region": "LPL",
+      "founded_season": "S2",
+      "worlds_titles": 1,
+      "msi_titles": 0,
+      "aliases": [
+        "Invictus Gaming",
+        "iG",
+        "IG"
+      ]
+    },
+    {
+      "team_id": "FPX",
+      "name": "FunPlus Phoenix",
+      "short_name": "FPX",
+      "region": "LPL",
+      "founded_season": "S8",
+      "worlds_titles": 1,
+      "msi_titles": 0,
+      "aliases": [
+        "FunPlus Phoenix",
+        "FPX"
+      ]
+    },
+    {
+      "team_id": "WBG",
+      "name": "Weibo Gaming",
+      "short_name": "WBG",
+      "region": "LPL",
+      "founded_season": "S7",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Weibo Gaming",
+        "WBG",
+        "Weibo Gaming TapTap",
+        "Suning",
+        "SN",
+        "Suning Gaming"
+      ]
+    },
+    {
+      "team_id": "LNG",
+      "name": "LNG Esports",
+      "short_name": "LNG",
+      "region": "LPL",
+      "founded_season": "S5",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "LNG Esports",
+        "LNG",
+        "LNG Ninebot Esports",
+        "Snake Esports",
+        "SS"
+      ]
+    },
+    {
+      "team_id": "WE",
+      "name": "Team WE",
+      "short_name": "WE",
+      "region": "LPL",
+      "founded_season": "S2",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Team WE",
+        "WE",
+        "World Elite"
+      ]
+    },
+    {
+      "team_id": "OMG",
+      "name": "Oh My God",
+      "short_name": "OMG",
+      "region": "LPL",
+      "founded_season": "S3",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Oh My God",
+        "OMG"
+      ]
+    },
+    {
+      "team_id": "AL",
+      "name": "Anyone's Legend",
+      "short_name": "AL",
+      "region": "LPL",
+      "founded_season": "S9",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Anyone's Legend",
+        "AL",
+        "Rogue Warriors",
+        "RW"
+      ]
+    },
+    {
+      "team_id": "G2",
+      "name": "G2 Esports",
+      "short_name": "G2",
+      "region": "LEC",
+      "founded_season": "S6",
+      "worlds_titles": 0,
+      "msi_titles": 1,
+      "aliases": [
+        "G2 Esports",
+        "G2",
+        "Gamers2"
+      ]
+    },
+    {
+      "team_id": "FNC",
+      "name": "Fnatic",
+      "short_name": "FNC",
+      "region": "LEC",
+      "founded_season": "S1",
+      "worlds_titles": 1,
+      "msi_titles": 0,
+      "aliases": [
+        "Fnatic",
+        "FNC",
+        "FnaticMSI"
+      ]
+    },
+    {
+      "team_id": "MAD",
+      "name": "MAD Lions KOI",
+      "short_name": "MDK",
+      "region": "LEC",
+      "founded_season": "S6",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "MAD Lions KOI",
+        "Movistar KOI",
+        "MDK",
+        "MAD Lions",
+        "MAD",
+        "Splyce",
+        "SPY"
+      ]
+    },
+    {
+      "team_id": "RGE",
+      "name": "Rogue",
+      "short_name": "RGE",
+      "region": "LEC",
+      "founded_season": "S9",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Rogue",
+        "RGE",
+        "KOI"
+      ]
+    },
+    {
+      "team_id": "OG",
+      "name": "Origen",
+      "short_name": "OG",
+      "region": "LEC",
+      "founded_season": "S5",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Origen",
+        "OG",
+        "Astralis"
+      ]
+    },
+    {
+      "team_id": "M5",
+      "name": "Gambit Gaming",
+      "short_name": "M5",
+      "region": "LEC",
+      "founded_season": "S1",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Gambit Gaming",
+        "Gambit Esports",
+        "GMB",
+        "Moscow Five",
+        "M5",
+        "Empire"
+      ]
+    },
+    {
+      "team_id": "AAA",
+      "name": "against All authority",
+      "short_name": "aAa",
+      "region": "LEC",
+      "founded_season": "S1",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "against All authority",
+        "aAa",
+        "CLG Europe",
+        "CLG.EU",
+        "Evil Geniuses EU"
+      ]
+    },
+    {
+      "team_id": "C9",
+      "name": "Cloud9",
+      "short_name": "C9",
+      "region": "LCS",
+      "founded_season": "S3",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Cloud9",
+        "C9"
+      ]
+    },
+    {
+      "team_id": "TL",
+      "name": "Team Liquid",
+      "short_name": "TL",
+      "region": "LCS",
+      "founded_season": "S1",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Team Liquid",
+        "Team Liquid Honda",
+        "TL",
+        "Team Curse",
+        "CRS"
+      ]
+    },
+    {
+      "team_id": "TSM",
+      "name": "TSM",
+      "short_name": "TSM",
+      "region": "LCS",
+      "founded_season": "S1",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "TSM",
+        "Team SoloMid"
+      ]
+    },
+    {
+      "team_id": "FLY",
+      "name": "FlyQuest",
+      "short_name": "FLY",
+      "region": "LCS",
+      "founded_season": "S7",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "FlyQuest",
+        "FLY"
+      ]
+    },
+    {
+      "team_id": "CLG",
+      "name": "Counter Logic Gaming",
+      "short_name": "CLG",
+      "region": "LCS",
+      "founded_season": "S1",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": [
+        "Counter Logic Gaming",
+        "CLG",
+        "NRG",
+        "NRG Kia"
+      ]
+    },
+    {
+      "team_id": "TPA",
+      "name": "Taipei Assassins",
+      "short_name": "TPA",
+      "region": "PCS",
+      "founded_season": "S2",
+      "worlds_titles": 1,
+      "msi_titles": 0,
+      "aliases": [
+        "Taipei Assassins",
+        "Azubu Taipei Assassins",
+        "TPA",
+        "J Team",
+        "Flash Wolves",
+        "FW",
+        "PSG Talon",
+        "PSG",
+        "CTBC Flying Oyster",
+        "CFO"
+      ]
+    }
+  ]
+}

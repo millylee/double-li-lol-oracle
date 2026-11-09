@@ -1,0 +1,2042 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LoL S1–S16 全球赛事数据工作站 & 多智能体预测系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap');
+
+    :root {
+      --bg-base: #070a12;
+      --bg-surface: rgba(15, 23, 42, 0.78);
+      --border-subtle: rgba(148, 163, 184, 0.14);
+    }
+
+    body {
+      background-color: var(--bg-base);
+      background-image:
+        radial-gradient(at 15% 0%, rgba(59, 130, 246, 0.10) 0px, transparent 45%),
+        radial-gradient(at 85% 0%, rgba(244, 63, 94, 0.10) 0px, transparent 45%),
+        radial-gradient(at 50% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
+      color: #e2e8f0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .font-mono-num {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .bento-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(12px);
+      transition: border-color 0.2s ease;
+    }
+
+    .bento-card:hover {
+      border-color: rgba(148, 163, 184, 0.24);
+    }
+
+    .nav-pill-active {
+      background: rgba(255, 255, 255, 0.09);
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    input[type="range"].timeline-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      background: linear-gradient(90deg, #3b82f6 0%, #eab308 50%, #f43f5e 100%);
+      border-radius: 999px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"].timeline-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #f8fafc;
+      border: 3px solid #eab308;
+      box-shadow: 0 0 12px rgba(234, 179, 8, 0.8);
+      cursor: grab;
+      transition: transform 0.12s ease;
+    }
+
+    input[type="range"].timeline-slider::-webkit-slider-thumb:active {
+      cursor: grabbing;
+      transform: scale(1.15);
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.4);
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-amber-500/30 selection:text-amber-200">
+
+  <!-- ==================== STICKY TOP NAVBAR ==================== -->
+  <header class="sticky top-0 z-40 bg-slate-950/85 backdrop-blur-xl border-b border-slate-800/80">
+    <div class="max-w-[1440px] mx-auto px-4 lg:px-8 h-16 flex items-center justify-between gap-3">
+      <!-- Brand -->
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-rose-500 flex items-center justify-center font-extrabold text-white text-sm shadow-lg shadow-blue-500/20">
+          LoL
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-base tracking-tight text-white">LoL Esports Analytics & Agent Predictor</span>
+            <span class="hidden sm:inline-block text-[11px] font-mono-num px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">S1–S16 Full Archive</span>
+          </div>
+          <p class="text-[11px] text-slate-400 hidden md:block">
+            历代战队成员图鉴 · 跨赛区动态 Elo · 多智能体胜负预测 · 分钟级可拖动时间轴回放
+          </p>
+        </div>
+      </div>
+
+      <!-- Center Main View Switcher -->
+      <nav class="flex flex-wrap items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs font-medium">
+        <button onclick="switchTab('predictor')" id="tab-btn-predictor" class="px-3 py-1.5 rounded-lg nav-pill-active transition flex items-center gap-1">
+          <span>⚡ 对阵预测 & 时间轴回放</span>
+        </button>
+        <button onclick="switchTab('rosters')" id="tab-btn-rosters" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center gap-1">
+          <span>🎖️ 战队与历代成员图鉴</span>
+        </button>
+        <button onclick="switchTab('chronicle')" id="tab-btn-chronicle" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center gap-1">
+          <span>🏆 S1–S16 赛事编年史</span>
+        </button>
+        <button onclick="switchTab('rankings')" id="tab-btn-rankings" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center gap-1">
+          <span>📊 全球 Elo 榜 & 回测</span>
+        </button>
+      </nav>
+
+      <!-- Right Database Stats Pills -->
+      <div class="hidden xl:flex items-center gap-2 text-xs font-mono-num">
+        <div class="px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-300">
+          赛事 <strong id="sum-tournaments" class="text-white">-</strong>
+        </div>
+        <div class="px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-300">
+          系列赛 <strong id="sum-series" class="text-cyan-400">-</strong>
+        </div>
+        <div class="px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-300">
+          单局 <strong id="sum-games" class="text-amber-400">-</strong>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN WORKSPACE ==================== -->
+  <main class="max-w-[1440px] w-full mx-auto px-4 lg:px-8 py-6 flex-1 space-y-6">
+
+    <!-- =================================================================== -->
+    <!-- TAB 1: MULTI-AGENT PREDICTOR, CHARTS & INTERACTIVE TIMELINE REPLAY  -->
+    <!-- =================================================================== -->
+    <section id="tab-predictor" class="space-y-6">
+
+      <!-- 1. TOP CONTROL BAR & HERO MATCHUP BANNER -->
+      <div class="bento-card p-5 lg:p-6">
+        <!-- Quick Rivalry Presets -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-800/80">
+          <div class="flex flex-wrap items-center gap-1.5 text-xs">
+            <span class="text-slate-400 font-medium mr-1">🔥 焦点对决与跨时空预设:</span>
+            <button onclick="applyPreset('BLG','GEN',5,'Worlds Finals BO5','S16','S16')" class="px-2.5 py-1 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-200 border border-blue-500/35 transition">S16 BLG (Xun/Viper) vs S16 GEN</button>
+            <button onclick="applyPreset('T1','BLG',5,'Worlds Finals BO5','S14','S14')" class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">S14 T1 (ZOFGK) vs S14 BLG</button>
+            <button onclick="applyPreset('GEN','T1',5,'Worlds Semifinals BO5','S16','S16')" class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">S16 GEN vs S16 T1</button>
+            <button onclick="applyPreset('IG','T1',5,'Worlds Finals BO5','S8','S5')" class="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border border-amber-500/35 transition">跨时空: S8 IG vs S5 SKT</button>
+            <button onclick="applyPreset('EDG','DK',5,'Worlds Finals BO5','S11','S10')" class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">S11 EDG vs S10 DWG</button>
+            <button onclick="applyPreset('GEN','JDG',5,'Worlds Semifinals BO5','S4','S13')" class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">S4 SSW vs S13 JDG</button>
+          </div>
+          <span id="res-engine-badge" class="text-[11px] font-mono-num px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/25">
+            Hybrid Quant + Multi-Agent Engine
+          </span>
+        </div>
+
+        <!-- Selector Row with Era/Season Selectors for Both Teams -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+          <div class="md:col-span-3">
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-blue-400 mb-1.5">🟦 蓝方战队 (Team A)</label>
+            <div class="flex gap-1.5">
+              <select id="pred-team-a" class="flex-1 bg-slate-900/90 border border-blue-500/35 rounded-xl px-2.5 py-2 text-sm text-white focus:outline-none focus:border-blue-400"></select>
+              <select id="pred-season-a" onchange="runPrediction()" title="选择蓝方战队所处赛季阵容" class="w-24 bg-slate-900/90 border border-blue-500/35 rounded-xl px-2 py-2 text-xs font-mono-num text-blue-300"></select>
+            </div>
+          </div>
+
+          <div class="md:col-span-1 flex justify-center">
+            <button onclick="swapTeams()" title="交换蓝红方" class="w-full md:w-auto px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-bold transition">
+              ⇄
+            </button>
+          </div>
+
+          <div class="md:col-span-3">
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-rose-400 mb-1.5">🟥 红方战队 (Team B)</label>
+            <div class="flex gap-1.5">
+              <select id="pred-team-b" class="flex-1 bg-slate-900/90 border border-rose-500/35 rounded-xl px-2.5 py-2 text-sm text-white focus:outline-none focus:border-rose-400"></select>
+              <select id="pred-season-b" onchange="runPrediction()" title="选择红方战队所处赛季阵容" class="w-24 bg-slate-900/90 border border-rose-500/35 rounded-xl px-2 py-2 text-xs font-mono-num text-rose-300"></select>
+            </div>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">系列赛赛制</label>
+            <select id="pred-bo" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
+              <option value="5" selected>BO5 (全局BP淘汰赛)</option>
+              <option value="3">BO3 (常规赛/瑞士轮)</option>
+              <option value="1">BO1 (单场决胜)</option>
+            </select>
+          </div>
+
+          <div class="md:col-span-3 flex gap-2">
+            <div class="flex-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">赛事舞台</label>
+              <select id="pred-stage" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
+                <option value="Worlds Finals BO5" selected>全球总决赛 (Worlds)</option>
+                <option value="MSI Knockout BO5">季中冠军赛 (MSI)</option>
+                <option value="Regional Playoffs">四大赛区季后赛</option>
+              </select>
+            </div>
+            <button onclick="runPrediction()" id="btn-run-predict" class="self-end px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-blue-600/25 transition whitespace-nowrap">
+              ⚡ 推演
+            </button>
+          </div>
+        </div>
+
+        <!-- Hero Win Probability & Visual Team Logos + 5-Man Starting Avatar Cards -->
+        <div class="mt-6 pt-6 border-t border-slate-800/80 space-y-5">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            <!-- Team A Identity with Official SVG Crest -->
+            <div class="lg:col-span-3 flex items-center gap-3.5">
+              <img id="hero-logo-a" src="/api/avatar/team/BLG.svg" alt="Team A Logo" class="w-16 h-16 rounded-2xl shrink-0 drop-shadow-lg" />
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <h2 id="res-team-a-name" class="text-lg font-extrabold text-white truncate">Bilibili Gaming</h2>
+                  <span id="res-team-a-region" class="text-[11px] font-mono-num px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">LPL</span>
+                </div>
+                <p id="res-team-a-elo" class="text-xs text-slate-400 font-mono-num mt-0.5">Elo - | 🏆 -</p>
+                <p id="res-team-a-style" class="text-[11px] text-blue-300/80 truncate mt-0.5">-</p>
+              </div>
+            </div>
+
+            <!-- Center Win Probability Bar & Predicted Score -->
+            <div class="lg:col-span-6 space-y-2.5">
+              <div class="flex items-baseline justify-between">
+                <div class="flex items-baseline gap-2">
+                  <span id="res-prob-a-text" class="text-2xl font-black font-mono-num text-blue-400">50.0%</span>
+                  <span class="text-xs text-slate-400">胜率</span>
+                </div>
+
+                <div class="text-center px-3 py-1 rounded-xl bg-slate-900/90 border border-amber-500/30">
+                  <span class="text-[11px] text-slate-400 mr-1.5">最可能比分</span>
+                  <strong id="res-most-likely-score" class="text-base font-extrabold font-mono-num text-amber-300">3 : 2</strong>
+                  <span id="res-silver-scrapes" class="text-[11px] font-mono-num text-cyan-300 ml-2">战歌局 -%</span>
+                </div>
+
+                <div class="flex items-baseline gap-2">
+                  <span class="text-xs text-slate-400">胜率</span>
+                  <span id="res-prob-b-text" class="text-2xl font-black font-mono-num text-rose-400">50.0%</span>
+                </div>
+              </div>
+
+              <!-- Dual Progress Bar -->
+              <div class="w-full h-3.5 rounded-full bg-slate-900 overflow-hidden flex p-0.5 border border-slate-800">
+                <div id="res-prob-bar-a" class="h-full bg-gradient-to-r from-blue-600 to-cyan-400 rounded-l-full transition-all duration-500" style="width: 50%"></div>
+                <div id="res-prob-bar-b" class="h-full bg-gradient-to-l from-rose-600 to-orange-400 rounded-r-full transition-all duration-500" style="width: 50%"></div>
+              </div>
+
+              <!-- Scoreline Distribution Pills -->
+              <div id="res-score-pills" class="flex flex-wrap items-center justify-center gap-1.5 pt-1"></div>
+            </div>
+
+            <!-- Team B Identity with Official SVG Crest -->
+            <div class="lg:col-span-3 flex items-center justify-end gap-3.5 text-right">
+              <div class="min-w-0">
+                <div class="flex items-center justify-end gap-2">
+                  <span id="res-team-b-region" class="text-[11px] font-mono-num px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">LCK</span>
+                  <h2 id="res-team-b-name" class="text-lg font-extrabold text-white truncate">Gen.G</h2>
+                </div>
+                <p id="res-team-b-elo" class="text-xs text-slate-400 font-mono-num mt-0.5">Elo - | 🏆 -</p>
+                <p id="res-team-b-style" class="text-[11px] text-rose-300/80 truncate mt-0.5">-</p>
+              </div>
+              <img id="hero-logo-b" src="/api/avatar/team/GEN.svg" alt="Team B Logo" class="w-16 h-16 rounded-2xl shrink-0 drop-shadow-lg" />
+            </div>
+          </div>
+
+          <!-- Visual 5v5 Starting Roster Portrait Strip with Champion Icons -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-3 border-t border-slate-800/60">
+            <div>
+              <div class="flex items-center justify-between text-xs mb-2">
+                <span id="roster-strip-title-a" class="font-bold text-blue-400">🟦 BLG (S16) 首发五虎阵容</span>
+                <button onclick="switchTab('rosters')" class="text-[11px] text-slate-400 hover:text-blue-300 transition">查看历代全时期阵容 →</button>
+              </div>
+              <div id="hero-roster-strip-a" class="grid grid-cols-5 gap-2"></div>
+            </div>
+            <div>
+              <div class="flex items-center justify-between text-xs mb-2">
+                <button onclick="switchTab('rosters')" class="text-[11px] text-slate-400 hover:text-rose-300 transition">← 查看历代全时期阵容</button>
+                <span id="roster-strip-title-b" class="font-bold text-rose-400">GEN (S16) 首发五虎阵容 🟥</span>
+              </div>
+              <div id="hero-roster-strip-b" class="grid grid-cols-5 gap-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. VISUAL ANALYTICS BENTO ROW: 6D RADAR + 5-ROLE DAMAGE/TANKINESS/CONVERSION -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left 5 Cols: Six-Dimension Team Radar Chart -->
+        <div class="lg:col-span-5 bento-card p-5 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>🕸️ 战队六维战术雷达对比</span>
+              </h3>
+              <p class="text-xs text-slate-400 mt-0.5">对线压制 · 团战输出 · 前排承伤 · 资源控制 · 视野运营 · 大赛韧性</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs font-semibold">
+              <span class="flex items-center gap-1 text-blue-400"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span><span id="radar-leg-a">Team A</span></span>
+              <span class="flex items-center gap-1 text-rose-400"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span><span id="radar-leg-b">Team B</span></span>
+            </div>
+          </div>
+
+          <div id="chart-radar" class="w-full h-[310px]"></div>
+
+          <!-- Compact Team Macro Stat Strip -->
+          <div id="radar-stat-strip" class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-800/80 text-center text-xs"></div>
+        </div>
+
+        <!-- Right 7 Cols: 5-Role Combat Comparison (Damage, Tankiness, Conversion, GD@15) -->
+        <div class="lg:col-span-7 bento-card p-5 flex flex-col justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div>
+              <h3 class="text-sm font-bold text-white">⚔️ 五路选手输出 / 承伤 / 伤转效率图表对比</h3>
+              <p class="text-xs text-slate-400 mt-0.5">直观对比上单、打野、中单、下路、辅助在团战中的火力输出与前排承伤贡献</p>
+            </div>
+
+            <!-- Metric Switcher Pills -->
+            <div class="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+              <button onclick="switchCombatMetric('dpm')" id="cmetric-dpm" class="px-2.5 py-1 rounded-lg nav-pill-active transition">分均伤害 (DPM)</button>
+              <button onclick="switchCombatMetric('dtpm')" id="cmetric-dtpm" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition">分均承伤 (DTPM)</button>
+              <button onclick="switchCombatMetric('share')" id="cmetric-share" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition">伤害/承伤占比%</button>
+              <button onclick="switchCombatMetric('conv')" id="cmetric-conv" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition">伤转率 & GD@15</button>
+            </div>
+          </div>
+
+          <div id="chart-combat" class="w-full h-[310px]"></div>
+
+          <!-- Contested Fearless Draft Champions Bar -->
+          <div class="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div id="res-contested-badges" class="flex flex-wrap items-center gap-1.5"></div>
+            <span class="text-slate-400 font-mono-num" id="res-team-dpm-totals">团队总 DPM: - vs -</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. INTERACTIVE TIMELINE & DRAG-TO-REPLAY CENTER -->
+      <div class="bento-card p-5 lg:p-6 space-y-5 border-amber-500/25">
+        <!-- Header & Game Switcher Tabs -->
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+          <div>
+            <div class="flex items-center gap-2.5">
+              <h3 class="text-base font-bold text-white">⏱️ 局内时间轴经济差、资源节点 & 拖动回放中心</h3>
+              <span id="tl-story-badge" class="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-medium">
+                AI 标准推演局
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+              拖动下方进度条或点击曲线上的资源图标（🩸一血 / 👾巢虫 / 🗼一塔 / 🐉小龙 / 👑大龙），实时回放每分钟双方经济差、胜率变化与 10 名选手实时输出/承伤/发育状态
+            </p>
+          </div>
+
+          <!-- Series Game Switcher Tabs -->
+          <div id="tl-game-tabs" class="flex flex-wrap items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs"></div>
+        </div>
+
+        <!-- ECharts Gold Diff & Live Win Probability Curve with Event Markers -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div class="lg:col-span-8 space-y-4">
+            <div id="chart-timeline" class="w-full h-[300px] bg-slate-950/40 rounded-xl border border-slate-800/70 p-2"></div>
+
+            <!-- Interactive Scrubber Control Bar -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-3">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                  <button onclick="toggleTimelinePlay()" id="btn-tl-play" class="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition flex items-center gap-1.5 shadow">
+                    <span id="btn-tl-play-icon">▶</span>
+                    <span id="btn-tl-play-text">自动回放</span>
+                  </button>
+                  <button onclick="cyclePlaySpeed()" id="btn-tl-speed" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono-num text-xs border border-slate-700">
+                    1x 倍速
+                  </button>
+                  <button onclick="scrubToMinute(15)" class="px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-cyan-300 text-xs border border-slate-700">
+                    跳至 @15:00 对线结算
+                  </button>
+                </div>
+
+                <div class="flex items-center gap-3 font-mono-num">
+                  <span class="text-xs text-slate-400">当前回放时间:</span>
+                  <span id="tl-current-time-badge" class="text-base font-extrabold px-3 py-0.5 rounded-lg bg-slate-950 text-amber-300 border border-amber-500/40">
+                    15:00
+                  </span>
+                  <span id="tl-live-winprob-badge" class="text-xs px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                    实时胜率: -%
+                  </span>
+                </div>
+              </div>
+
+              <!-- Range Slider -->
+              <div class="flex items-center gap-3">
+                <span class="text-xs font-mono-num text-slate-400">00:00</span>
+                <input
+                  id="tl-slider"
+                  type="range"
+                  min="0"
+                  max="32"
+                  value="15"
+                  oninput="onSliderScrub(this.value)"
+                  class="w-full timeline-slider"
+                />
+                <span id="tl-max-time" class="text-xs font-mono-num text-slate-400">32:00</span>
+              </div>
+
+              <!-- Quick Jump Event Pills -->
+              <div id="tl-event-pills" class="flex flex-wrap items-center gap-1.5 pt-1"></div>
+            </div>
+          </div>
+
+          <!-- Right 4 Cols: Live Objective Scoreboard & Event Log up to Minute t -->
+          <div class="lg:col-span-4 space-y-4">
+            <!-- Minute t Team Snapshot Card -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div class="flex items-center gap-2">
+                  <img id="tl-blue-logo" src="/api/avatar/team/BLG.svg" class="w-6 h-6" alt="" />
+                  <span id="tl-blue-header" class="text-sm font-extrabold text-blue-400">BLG</span>
+                </div>
+                <span id="tl-gold-diff-pill" class="text-xs font-mono-num font-bold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                  +1,250g
+                </span>
+                <div class="flex items-center gap-2">
+                  <span id="tl-red-header" class="text-sm font-extrabold text-rose-400">GEN</span>
+                  <img id="tl-red-logo" src="/api/avatar/team/GEN.svg" class="w-6 h-6" alt="" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 text-center text-xs font-mono-num">
+                <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800/80">
+                  <div class="text-slate-400 text-[11px]">总经济 (Gold)</div>
+                  <div class="font-bold text-sm mt-0.5">
+                    <span id="tl-stat-bgold" class="text-blue-300">28.5k</span>
+                    <span class="text-slate-600 mx-0.5">:</span>
+                    <span id="tl-stat-rgold" class="text-rose-300">27.2k</span>
+                  </div>
+                </div>
+                <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800/80">
+                  <div class="text-slate-400 text-[11px]">击败 (Kills)</div>
+                  <div class="font-bold text-sm mt-0.5">
+                    <span id="tl-stat-bkills" class="text-blue-300">9</span>
+                    <span class="text-slate-600 mx-0.5">:</span>
+                    <span id="tl-stat-rkills" class="text-rose-300">5</span>
+                  </div>
+                </div>
+                <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800/80">
+                  <div class="text-slate-400 text-[11px]">推塔 (Towers)</div>
+                  <div class="font-bold text-sm mt-0.5">
+                    <span id="tl-stat-btowers" class="text-blue-300">4</span>
+                    <span class="text-slate-600 mx-0.5">:</span>
+                    <span id="tl-stat-rtowers" class="text-rose-300">1</span>
+                  </div>
+                </div>
+                <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800/80">
+                  <div class="text-slate-400 text-[11px]">🐉 小龙</div>
+                  <div class="font-bold text-sm mt-0.5">
+                    <span id="tl-stat-bdrag" class="text-blue-300">2</span>
+                    <span class="text-slate-600 mx-0.5">:</span>
+                    <span id="tl-stat-rdrag" class="text-rose-300">1</span>
+                  </div>
+                </div>
+                <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800/80">
+                  <div class="text-slate-400 text-[11px]">👑 纳什男爵</div>
+                  <div class="font-bold text-sm mt-0.5">
+                    <span id="tl-stat-bbaron" class="text-blue-300">0</span>
+                    <span class="text-slate-600 mx-0.5">:</span>
+                    <span id="tl-stat-rbaron" class="text-rose-300">0</span>
+                  </div>
+                </div>
+                <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800/80">
+                  <div class="text-slate-400 text-[11px]">👾 虚空巢虫</div>
+                  <div class="font-bold text-sm mt-0.5">
+                    <span id="tl-stat-bgrubs" class="text-blue-300">3</span>
+                    <span class="text-slate-600 mx-0.5">:</span>
+                    <span id="tl-stat-rgrubs" class="text-rose-300">1</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Key Objective & Teamfight Feed -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+                📌 关键资源节点播报 (点击事件跳转时间轴)
+              </h4>
+              <div id="tl-event-feed" class="space-y-2 max-h-[215px] overflow-y-auto pr-1 text-xs"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 10-Player Minute-by-Minute Live Snapshot Table with Avatars & Champion Icons -->
+        <div class="bg-slate-950/60 border border-slate-800/90 rounded-xl p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+              <span>👥 当前分钟 (<span id="tl-table-min-label">15:00</span>) 五路对位头像、英雄、实时经济、累计伤害 & 承受伤害快照</span>
+            </h4>
+            <span class="text-[11px] text-slate-400">随时间轴拖动实时重算每位选手的当前装备经济、补刀、累计输出与前排承伤</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 text-[11px]">
+                  <th class="py-2 px-2 text-left">蓝方选手 & 英雄</th>
+                  <th class="py-2 px-2 text-right">实时经济 (补刀)</th>
+                  <th class="py-2 px-3 text-center">实时累计伤害 / 承伤</th>
+                  <th class="py-2 px-3 text-center">位置 & 对位经济差</th>
+                  <th class="py-2 px-3 text-center">实时累计伤害 / 承伤</th>
+                  <th class="py-2 px-2 text-left">实时经济 (补刀)</th>
+                  <th class="py-2 px-2 text-right">红方选手 & 英雄</th>
+                </tr>
+              </thead>
+              <tbody id="tl-players-tbody" class="divide-y divide-slate-800/60 font-mono-num"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. MULTI-AGENT REASONING, FACTOR ATTRIBUTION & CHIEF REPORT -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left 5 Cols: 3 Specialist Sub-Agents + Factor Log-Odds -->
+        <div class="lg:col-span-5 space-y-4">
+          <div id="res-subagents-cards" class="space-y-3"></div>
+
+          <div class="bento-card p-5">
+            <h4 class="text-sm font-bold text-white mb-3">⚖️ 量化模型胜率因子归因 (Log-Odds Attribution)</h4>
+            <div id="res-factor-list" class="space-y-2 text-xs"></div>
+          </div>
+        </div>
+
+        <!-- Right 7 Cols: Chief Predictor Markdown Report & Tool Execution Trace -->
+        <div class="lg:col-span-7 space-y-4">
+          <div class="bento-card p-5 lg:p-6">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+              <h3 class="text-base font-bold text-amber-300">📜 Chief Predictor 首席裁决官战术分析报告</h3>
+              <span class="text-xs text-slate-400">融合 Elo / GD@15 / 龙魂控制 / 全局 BP</span>
+            </div>
+            <div id="res-report-md" class="text-sm leading-relaxed space-y-2 text-slate-200"></div>
+          </div>
+
+          <div class="bento-card p-5">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-300 mb-3">
+              🔍 Multi-Agent Tool-Calling 执行轨迹与耗时
+            </h4>
+            <div id="res-agent-trace" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs"></div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 2: TEAMS & MULTI-ERA ROSTERS GALLERY (战队与历代成员图鉴)         -->
+    <!-- =================================================================== -->
+    <section id="tab-rosters" class="hidden space-y-6">
+      <div class="bento-card p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-bold text-white">🎖️ 全球豪门战队 Logo 与历代成员档案图鉴 (S1–S16)</h2>
+          <p class="text-xs text-slate-400 mt-0.5">
+            点击任意战队图标，即可查看该战队在不同赛季时期（如 S16 BLG: Bin/Xun/knight/Viper/ON、S14 T1: ZOFGK、S8 IG、S4 SSW 等）的完整首发成员头像、分均伤害/承伤与招牌英雄池
+          </p>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="text-slate-400">赛区筛选:</span>
+          <select id="gallery-region-filter" onchange="renderGalleryTeamGrid()" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-white">
+            <option value="ALL">全部赛区</option>
+            <option value="LPL">LPL (中国大陆)</option>
+            <option value="LCK">LCK (韩国)</option>
+            <option value="LEC">LEC (欧洲)</option>
+            <option value="LCS">LCS (北美)</option>
+            <option value="PCS">PCS (亚太)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Team Logos Grid -->
+      <div id="gallery-teams-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3"></div>
+
+      <!-- Selected Team Era Rosters Detail Panel -->
+      <div id="gallery-team-detail" class="bento-card p-6 space-y-6"></div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 3: S1-S16 GLOBAL CHRONICLE & REGIONAL MATCHES                   -->
+    <!-- =================================================================== -->
+    <section id="tab-chronicle" class="hidden space-y-6">
+      <div class="bento-card p-5 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">赛季 (S1–S16)</label>
+            <select id="chr-season" onchange="loadChronicle()" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-white">
+              <option value="ALL">全部赛季 (S1–S16)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">赛事级别</label>
+            <select id="chr-tier" onchange="loadChronicle()" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-white">
+              <option value="ALL">全部级别 (Worlds + MSI + 四大赛区)</option>
+              <option value="Worlds">全球总决赛 (Worlds S1–S16)</option>
+              <option value="MSI">季中冠军赛 (MSI 2015–2026)</option>
+              <option value="Regional">四大赛区联赛 (LCK/LPL/LEC/LCS)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">所属赛区</label>
+            <select id="chr-region" onchange="loadChronicle()" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-white">
+              <option value="ALL">全球与四大赛区</option>
+              <option value="GLOBAL">国际赛 (GLOBAL)</option>
+              <option value="LCK">韩国赛区 (LCK)</option>
+              <option value="LPL">中国大陆赛区 (LPL)</option>
+              <option value="LEC">欧洲赛区 (LEC)</option>
+              <option value="LCS">北美赛区 (LCS)</option>
+            </select>
+          </div>
+        </div>
+        <div class="text-xs text-slate-400">
+          点击左侧任意赛事卡片可筛选右侧对应的系列赛比分，或一键送入 AI 预测台复盘
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-6 space-y-3 max-h-[740px] overflow-y-auto pr-1" id="chr-tournaments-list"></div>
+        <div class="lg:col-span-6 bento-card p-5">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+            <h3 id="chr-matches-title" class="text-sm font-bold text-amber-300">系列赛赛果记录 (Series Matches)</h3>
+            <button onclick="loadMatchesForTournament('')" class="text-xs text-cyan-400 hover:underline">查看全部</button>
+          </div>
+          <div id="chr-matches-list" class="space-y-2.5 max-h-[660px] overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 4: GLOBAL ELO POWER RANKINGS & HISTORICAL BACKTEST              -->
+    <!-- =================================================================== -->
+    <section id="tab-rankings" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-7 bento-card p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div>
+              <h3 class="text-base font-bold text-white">🌐 全球战队跨赛区动态 Elo 战力总榜</h3>
+              <p class="text-xs text-slate-400">基于 S1–S16 历届国际赛与四大赛区交手回溯校准（含战队历史曾用名谱系继承）</p>
+            </div>
+            <select id="rank-region" onchange="loadRankings()" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white">
+              <option value="ALL">全部赛区</option>
+              <option value="LCK">LCK</option>
+              <option value="LPL">LPL</option>
+              <option value="LEC">LEC</option>
+              <option value="LCS">LCS</option>
+              <option value="PCS">PCS</option>
+            </select>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400">
+                  <th class="py-2.5 px-2">排名</th>
+                  <th class="py-2.5 px-3">战队 Logo & 名称 (曾用名谱系)</th>
+                  <th class="py-2.5 px-2">赛区</th>
+                  <th class="py-2.5 px-2 text-right">当前校准 Elo</th>
+                  <th class="py-2.5 px-2 text-right">历史峰值 Elo</th>
+                  <th class="py-2.5 px-2 text-center">国际赛冠 (S赛/MSI)</th>
+                </tr>
+              </thead>
+              <tbody id="rank-tbody" class="divide-y divide-slate-800/60"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-6">
+          <div class="bento-card p-5">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 class="text-sm font-bold text-emerald-300">🧪 历届世界赛 / MSI 淘汰赛回测验证</h3>
+                <p class="text-xs text-slate-400">在全部 139 场历史国际赛系列赛上检验预测模型的客观命中率</p>
+              </div>
+              <button onclick="runBacktest()" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
+                重新回测
+              </button>
+            </div>
+            <div id="backtest-summary" class="mb-3"></div>
+            <div id="backtest-list" class="space-y-1.5 max-h-[360px] overflow-y-auto text-xs pr-1"></div>
+          </div>
+
+          <div class="bento-card p-5">
+            <h3 class="text-sm font-bold text-cyan-300 mb-2">🔄 Leaguepedia Cargo API 线上同步器</h3>
+            <p class="text-xs text-slate-400 mb-3">
+              输入任意 Leaguepedia 赛事 OverviewPage 路径即可在线拉取最新赛程与比分并自动重算全库 Elo：
+            </p>
+            <div class="space-y-2.5 text-xs">
+              <input id="sync-page" type="text" value="2024 Season World Championship/Main Event" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-200" />
+              <div class="flex gap-2">
+                <input id="sync-season" type="text" value="S14" class="w-20 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-slate-200" />
+                <input id="sync-year" type="number" value="2024" class="w-24 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-slate-200" />
+                <button onclick="triggerLeaguepediaSync()" class="flex-1 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition">
+                  立即从 Leaguepedia 同步
+                </button>
+              </div>
+              <div id="sync-status" class="text-xs text-slate-400 pt-1"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== APPLICATION SCRIPT ==================== -->
+  <script>
+    let allTeams = [];
+    let currentPredictionData = null;
+    let currentCombatMetric = 'dpm';
+    let selectedGalleryTeamId = 'BLG';
+
+    // Timeline replay state
+    let activeGameTimeline = null;
+    let activeMinute = 15;
+    let playTimer = null;
+    let playSpeedMs = 750;
+
+    // ECharts instances
+    let radarChart = null;
+    let combatChart = null;
+    let timelineChart = null;
+
+    async function initApp() {
+      const seasonSel = document.getElementById('chr-season');
+      const selSa = document.getElementById('pred-season-a');
+      const selSb = document.getElementById('pred-season-b');
+
+      for (let i = 16; i >= 1; i--) {
+        const sCode = `S${i}`;
+        const yr = 2010 + i;
+        seasonSel.appendChild(new Option(`${sCode} (${yr})`, sCode));
+        selSa.appendChild(new Option(`${sCode} (${yr})`, sCode));
+        selSb.appendChild(new Option(`${sCode} (${yr})`, sCode));
+      }
+      selSa.value = 'S16';
+      selSb.value = 'S16';
+
+      initCharts();
+      window.addEventListener('resize', () => {
+        radarChart && radarChart.resize();
+        combatChart && combatChart.resize();
+        timelineChart && timelineChart.resize();
+      });
+
+      const [sumRes, teamsRes] = await Promise.all([
+        fetch('/api/summary').then(r => r.json()),
+        fetch('/api/teams').then(r => r.json())
+      ]);
+
+      document.getElementById('sum-tournaments').textContent = sumRes.tournaments_count;
+      document.getElementById('sum-series').textContent = sumRes.series_count;
+      document.getElementById('sum-games').textContent = sumRes.games_count;
+
+      allTeams = teamsRes.teams || [];
+      populateTeamSelects();
+      await runPrediction();
+    }
+
+    function initCharts() {
+      radarChart = echarts.init(document.getElementById('chart-radar'));
+      combatChart = echarts.init(document.getElementById('chart-combat'));
+      timelineChart = echarts.init(document.getElementById('chart-timeline'));
+
+      timelineChart.getZr().on('click', function (params) {
+        const pointInPixel = [params.offsetX, params.offsetY];
+        if (timelineChart.containPixel('grid', pointInPixel)) {
+          const xIndex = timelineChart.convertFromPixel({ seriesIndex: 0 }, pointInPixel)[0];
+          if (activeGameTimeline && xIndex >= 0 && xIndex <= activeGameTimeline.duration_min) {
+            scrubToMinute(Math.round(xIndex));
+          }
+        }
+      });
+    }
+
+    function populateTeamSelects() {
+      const selA = document.getElementById('pred-team-a');
+      const selB = document.getElementById('pred-team-b');
+      selA.innerHTML = '';
+      selB.innerHTML = '';
+
+      allTeams.forEach(t => {
+        const label = `[${t.region}] ${t.name} (${t.short_name}) · Elo ${Math.round(t.current_elo)}`;
+        selA.add(new Option(label, t.team_id));
+        selB.add(new Option(label, t.team_id));
+      });
+
+      selA.value = 'BLG';
+      selB.value = 'GEN';
+    }
+
+    function swapTeams() {
+      const selA = document.getElementById('pred-team-a');
+      const selB = document.getElementById('pred-team-b');
+      const selSa = document.getElementById('pred-season-a');
+      const selSb = document.getElementById('pred-season-b');
+
+      const tmpT = selA.value;
+      selA.value = selB.value;
+      selB.value = tmpT;
+
+      const tmpS = selSa.value;
+      selSa.value = selSb.value;
+      selSb.value = tmpS;
+
+      runPrediction();
+    }
+
+    function applyPreset(ta, tb, bo, stage, sa = 'S16', sb = 'S16') {
+      document.getElementById('pred-team-a').value = ta;
+      document.getElementById('pred-team-b').value = tb;
+      document.getElementById('pred-season-a').value = sa;
+      document.getElementById('pred-season-b').value = sb;
+      document.getElementById('pred-bo').value = String(bo);
+      document.getElementById('pred-stage').value = stage;
+      runPrediction();
+    }
+
+    function switchTab(tab) {
+      ['predictor', 'rosters', 'chronicle', 'rankings'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tab);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (t === tab) {
+          btn.classList.add('nav-pill-active');
+          btn.classList.remove('text-slate-400');
+        } else {
+          btn.classList.remove('nav-pill-active');
+          btn.classList.add('text-slate-400');
+        }
+      });
+      if (tab === 'predictor') {
+        setTimeout(() => {
+          radarChart && radarChart.resize();
+          combatChart && combatChart.resize();
+          timelineChart && timelineChart.resize();
+        }, 50);
+      }
+      if (tab === 'rosters') {
+        renderGalleryTeamGrid();
+        loadGalleryTeamDetail(selectedGalleryTeamId);
+      }
+      if (tab === 'chronicle') loadChronicle();
+      if (tab === 'rankings') {
+        loadRankings();
+        runBacktest();
+      }
+    }
+
+    async function runPrediction() {
+      stopTimelinePlay();
+      const team_a = document.getElementById('pred-team-a').value;
+      const team_b = document.getElementById('pred-team-b').value;
+      const season_a = document.getElementById('pred-season-a').value;
+      const season_b = document.getElementById('pred-season-b').value;
+      const best_of = parseInt(document.getElementById('pred-bo').value, 10);
+      const stage = document.getElementById('pred-stage').value;
+
+      if (team_a === team_b && season_a === season_b) {
+        alert('请选择不同的战队或不同赛季时期的阵容进行对阵推演！');
+        return;
+      }
+
+      const btn = document.getElementById('btn-run-predict');
+      btn.disabled = true;
+      btn.textContent = '⏳ 推演中...';
+
+      try {
+        const res = await fetch('/api/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            team_a,
+            team_b,
+            season_a,
+            season_b,
+            best_of,
+            stage,
+            blue_side_team: team_a
+          })
+        });
+        const data = await res.json();
+        currentPredictionData = data;
+        renderPredictionDashboard(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ 推演';
+      }
+    }
+
+    function renderPredictionDashboard(data) {
+      const pa = data.team_a_profile;
+      const pb = data.team_b_profile;
+      const pred = data.prediction;
+
+      // 1. Hero Banner & SVG Logos
+      document.getElementById('hero-logo-a').src = pa.logo_url || `/api/avatar/team/${pa.team_id}.svg`;
+      document.getElementById('hero-logo-b').src = pb.logo_url || `/api/avatar/team/${pb.team_id}.svg`;
+      document.getElementById('res-team-a-name').textContent = `${pa.name} (${pa.active_roster_season})`;
+      document.getElementById('res-team-b-name').textContent = `${pb.name} (${pb.active_roster_season})`;
+      document.getElementById('res-team-a-region').textContent = pa.region;
+      document.getElementById('res-team-b-region').textContent = pb.region;
+      document.getElementById('res-team-a-elo').textContent = `Elo ${pa.current_elo} (峰值 ${pa.peak_elo}) · 🏆 ${pa.worlds_titles}S / ${pa.msi_titles}M`;
+      document.getElementById('res-team-b-elo').textContent = `Elo ${pb.current_elo} (峰值 ${pb.peak_elo}) · 🏆 ${pb.worlds_titles}S / ${pb.msi_titles}M`;
+      document.getElementById('res-team-a-style').textContent = pa.style_tag;
+      document.getElementById('res-team-b-style').textContent = pb.style_tag;
+
+      // Render 5-Man Starting Roster Portrait Strip with Avatars & Champion Icons
+      document.getElementById('roster-strip-title-a').textContent = `🟦 ${pa.short_name} (${pa.active_roster_season} 阵容) 首发五虎`;
+      document.getElementById('roster-strip-title-b').textContent = `${pb.short_name} (${pb.active_roster_season} 阵容) 首发五虎 🟥`;
+
+      document.getElementById('hero-roster-strip-a').innerHTML = (pa.roster || []).map(p => `
+        <div class="bg-slate-900/90 border border-blue-500/25 rounded-xl p-2 flex flex-col items-center text-center hover:border-blue-400 transition">
+          <div class="relative">
+            <img src="${p.avatar_url}" alt="${p.player_name}" class="w-11 h-11 rounded-xl" />
+            <span class="absolute -bottom-1 -right-1 px-1 rounded bg-blue-600 text-[9px] font-mono-num font-bold text-white">${p.rating}</span>
+          </div>
+          <div class="font-bold text-xs text-white mt-1.5 truncate w-full">${p.player_name}</div>
+          <div class="text-[10px] text-blue-300/80 uppercase font-mono-num">${p.role} · KDA ${p.kda}</div>
+          <div class="flex items-center justify-center gap-1 mt-1">
+            ${(p.champion_icons || []).slice(0, 3).map(ci => `
+              <img src="${ci.icon}" title="${ci.name}" class="w-4 h-4 rounded-full border border-slate-700" onerror="this.style.display='none'" />
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('hero-roster-strip-b').innerHTML = (pb.roster || []).map(p => `
+        <div class="bg-slate-900/90 border border-rose-500/25 rounded-xl p-2 flex flex-col items-center text-center hover:border-rose-400 transition">
+          <div class="relative">
+            <img src="${p.avatar_url}" alt="${p.player_name}" class="w-11 h-11 rounded-xl" />
+            <span class="absolute -bottom-1 -right-1 px-1 rounded bg-rose-600 text-[9px] font-mono-num font-bold text-white">${p.rating}</span>
+          </div>
+          <div class="font-bold text-xs text-white mt-1.5 truncate w-full">${p.player_name}</div>
+          <div class="text-[10px] text-rose-300/80 uppercase font-mono-num">${p.role} · KDA ${p.kda}</div>
+          <div class="flex items-center justify-center gap-1 mt-1">
+            ${(p.champion_icons || []).slice(0, 3).map(ci => `
+              <img src="${ci.icon}" title="${ci.name}" class="w-4 h-4 rounded-full border border-slate-700" onerror="this.style.display='none'" />
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+
+      const probA = (pred.team_a_win_prob * 100).toFixed(1);
+      const probB = (pred.team_b_win_prob * 100).toFixed(1);
+      document.getElementById('res-prob-a-text').textContent = `${probA}%`;
+      document.getElementById('res-prob-b-text').textContent = `${probB}%`;
+      document.getElementById('res-prob-bar-a').style.width = `${probA}%`;
+      document.getElementById('res-prob-bar-b').style.width = `${probB}%`;
+
+      document.getElementById('res-most-likely-score').textContent = `${pa.short_name} ${pred.most_likely_score} ${pb.short_name}`;
+      document.getElementById('res-silver-scrapes').textContent =
+        data.matchup_meta.best_of === 5
+          ? `🎵 战歌局 ${(pred.silver_scrapes_prob * 100).toFixed(1)}%`
+          : `出现率 ${(pred.most_likely_score_prob * 100).toFixed(1)}%`;
+
+      // Scoreline pills
+      const pillsDiv = document.getElementById('res-score-pills');
+      pillsDiv.innerHTML = Object.entries(pred.score_distribution).map(([sc, p]) => {
+        const [sa, sb] = sc.split(':').map(Number);
+        const isA = sa > sb;
+        const isTop = sc === pred.most_likely_score;
+        return `
+          <div class="px-2.5 py-1 rounded-lg font-mono-num text-xs border ${
+            isTop
+              ? 'bg-amber-500/20 border-amber-400 text-amber-200 font-bold'
+              : (isA ? 'bg-blue-500/10 border-blue-500/25 text-blue-300' : 'bg-rose-500/10 border-rose-500/25 text-rose-300')
+          }">
+            ${pa.short_name} ${sc} <span class="opacity-80">${(p * 100).toFixed(1)}%</span>
+          </div>
+        `;
+      }).join('');
+
+      // 2. Render 6D Radar Chart
+      renderRadarChart(data);
+
+      // 3. Render 5-Role Combat Chart
+      renderCombatChart(data, currentCombatMetric);
+
+      // Contested picks & total DPM
+      const contestedDiv = document.getElementById('res-contested-badges');
+      if (data.contested_picks && data.contested_picks.length > 0) {
+        contestedDiv.innerHTML = `<span class="text-slate-400 font-medium">🔥 全局 BP 重叠高优英雄:</span>` +
+          data.contested_picks.map(c => `<span class="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/35 text-amber-300 font-medium">${c.champion} <span class="text-slate-400">(${c.role.split(' ')[0]})</span></span>`).join('');
+      } else {
+        contestedDiv.innerHTML = `<span class="text-slate-400">双方英雄池互补，重叠度较低</span>`;
+      }
+      document.getElementById('res-team-dpm-totals').textContent =
+        `团队分均总伤害: ${pa.short_name} ${pa.team_dpm} DPM vs ${pb.short_name} ${pb.team_dpm} DPM`;
+
+      // 4. Initialize Interactive Series Timelines
+      initSeriesTimelines(data.series_timelines || []);
+
+      // 5. Render Sub-Agents, Factors, Chief Report & Tool Trace
+      renderAgentSection(data);
+    }
+
+    function renderRadarChart(data) {
+      const pa = data.team_a_profile;
+      const pb = data.team_b_profile;
+      const rc = data.radar_comparison;
+
+      document.getElementById('radar-leg-a').textContent = `${pa.short_name} (${pa.active_roster_season})`;
+      document.getElementById('radar-leg-b').textContent = `${pb.short_name} (${pb.active_roster_season})`;
+
+      radarChart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          borderColor: 'rgba(148, 163, 184, 0.25)',
+          textStyle: { color: '#f8fafc', fontSize: 12 }
+        },
+        radar: {
+          radius: '68%',
+          center: ['50%', '52%'],
+          indicator: rc.dimensions.map(d => ({ name: d.label, max: 100, min: 45 })),
+          axisName: {
+            color: '#cbd5e1',
+            fontSize: 11,
+            fontWeight: 600
+          },
+          splitArea: {
+            areaStyle: {
+              color: ['rgba(30, 41, 59, 0.15)', 'rgba(15, 23, 42, 0.35)']
+            }
+          },
+          axisLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.2)' } },
+          splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.2)' } }
+        },
+        series: [
+          {
+            type: 'radar',
+            symbolSize: 6,
+            data: [
+              {
+                value: rc.team_a_values,
+                name: `${pa.name} (${pa.active_roster_season})`,
+                itemStyle: { color: '#3b82f6' },
+                lineStyle: { width: 2.5, color: '#3b82f6' },
+                areaStyle: { color: 'rgba(59, 130, 246, 0.28)' }
+              },
+              {
+                value: rc.team_b_values,
+                name: `${pb.name} (${pb.active_roster_season})`,
+                itemStyle: { color: '#f43f5e' },
+                lineStyle: { width: 2.5, color: '#f43f5e' },
+                areaStyle: { color: 'rgba(244, 63, 94, 0.25)' }
+              }
+            ]
+          }
+        ]
+      });
+
+      document.getElementById('radar-stat-strip').innerHTML = `
+        <div class="bg-slate-900/75 rounded-xl p-2 border border-slate-800/80">
+          <div class="text-[11px] text-slate-400">场均 GD@15</div>
+          <div class="font-mono-num font-bold mt-0.5">
+            <span class="text-blue-400">${pa.avg_gd15 >= 0 ? '+' : ''}${pa.avg_gd15}</span>
+            <span class="text-slate-600 mx-1">/</span>
+            <span class="text-rose-400">${pb.avg_gd15 >= 0 ? '+' : ''}${pb.avg_gd15}</span>
+          </div>
+        </div>
+        <div class="bg-slate-900/75 rounded-xl p-2 border border-slate-800/80">
+          <div class="text-[11px] text-slate-400">大小龙控制率</div>
+          <div class="font-mono-num font-bold mt-0.5">
+            <span class="text-blue-400">${Math.round(pa.dragon_control_rate*100)}%·${Math.round(pa.baron_control_rate*100)}%</span>
+            <span class="text-slate-600 mx-0.5">/</span>
+            <span class="text-rose-400">${Math.round(pb.dragon_control_rate*100)}%·${Math.round(pb.baron_control_rate*100)}%</span>
+          </div>
+        </div>
+        <div class="bg-slate-900/75 rounded-xl p-2 border border-slate-800/80">
+          <div class="text-[11px] text-slate-400">BO5 胜率 (战歌局)</div>
+          <div class="font-mono-num font-bold mt-0.5">
+            <span class="text-blue-400">${Math.round(pa.bo5_win_rate*100)}% (${pa.game5_record})</span>
+            <span class="text-slate-600 mx-0.5">/</span>
+            <span class="text-rose-400">${Math.round(pb.bo5_win_rate*100)}% (${pb.game5_record})</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function switchCombatMetric(metric) {
+      currentCombatMetric = metric;
+      ['dpm', 'dtpm', 'share', 'conv'].forEach(m => {
+        const btn = document.getElementById(`cmetric-${m}`);
+        if (m === metric) {
+          btn.classList.add('nav-pill-active');
+          btn.classList.remove('text-slate-400');
+        } else {
+          btn.classList.remove('nav-pill-active');
+          btn.classList.add('text-slate-400');
+        }
+      });
+      if (currentPredictionData) {
+        renderCombatChart(currentPredictionData, metric);
+      }
+    }
+
+    function renderCombatChart(data, metric) {
+      const pa = data.team_a_profile;
+      const pb = data.team_b_profile;
+      const lanes = data.lane_comparisons || [];
+      const categories = lanes.map(l => `${l.role_label.split(' ')[0]}\n${l.player_a} vs ${l.player_b}`);
+
+      let series = [];
+      let yAxisName = '';
+
+      if (metric === 'dpm') {
+        yAxisName = '分均对英雄伤害 (DPM)';
+        series = [
+          {
+            name: `${pa.short_name} 分均伤害 (DPM)`,
+            type: 'bar',
+            data: lanes.map(l => l.dpm_a),
+            itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#60a5fa' }, { offset: 1, color: '#2563eb' }]), borderRadius: [6, 6, 0, 0] },
+            label: { show: true, position: 'top', color: '#93c5fd', fontSize: 11, fontFamily: 'JetBrains Mono' }
+          },
+          {
+            name: `${pb.short_name} 分均伤害 (DPM)`,
+            type: 'bar',
+            data: lanes.map(l => l.dpm_b),
+            itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#fb7185' }, { offset: 1, color: '#e11d48' }]), borderRadius: [6, 6, 0, 0] },
+            label: { show: true, position: 'top', color: '#fda4af', fontSize: 11, fontFamily: 'JetBrains Mono' }
+          }
+        ];
+      } else if (metric === 'dtpm') {
+        yAxisName = '分均承受伤害 (DTPM)';
+        series = [
+          {
+            name: `${pa.short_name} 分均承伤 (DTPM)`,
+            type: 'bar',
+            data: lanes.map(l => l.dtpm_a),
+            itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#38bdf8' }, { offset: 1, color: '#0284c7' }]), borderRadius: [6, 6, 0, 0] },
+            label: { show: true, position: 'top', color: '#7dd3fc', fontSize: 11, fontFamily: 'JetBrains Mono' }
+          },
+          {
+            name: `${pb.short_name} 分均承伤 (DTPM)`,
+            type: 'bar',
+            data: lanes.map(l => l.dtpm_b),
+            itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#fb923c' }, { offset: 1, color: '#ea580c' }]), borderRadius: [6, 6, 0, 0] },
+            label: { show: true, position: 'top', color: '#fdba74', fontSize: 11, fontFamily: 'JetBrains Mono' }
+          }
+        ];
+      } else if (metric === 'share') {
+        yAxisName = '团队伤害占比 & 承伤占比 (%)';
+        series = [
+          {
+            name: `${pa.short_name} 伤害占比%`,
+            type: 'bar',
+            data: lanes.map(l => l.dmg_share_a),
+            itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] }
+          },
+          {
+            name: `${pb.short_name} 伤害占比%`,
+            type: 'bar',
+            data: lanes.map(l => l.dmg_share_b),
+            itemStyle: { color: '#f43f5e', borderRadius: [4, 4, 0, 0] }
+          },
+          {
+            name: `${pa.short_name} 承伤占比%`,
+            type: 'line',
+            data: lanes.map(l => l.tank_share_a),
+            itemStyle: { color: '#38bdf8' },
+            lineStyle: { width: 2, type: 'dashed' }
+          },
+          {
+            name: `${pb.short_name} 承伤占比%`,
+            type: 'line',
+            data: lanes.map(l => l.tank_share_b),
+            itemStyle: { color: '#fb923c' },
+            lineStyle: { width: 2, type: 'dashed' }
+          }
+        ];
+      } else {
+        yAxisName = '伤害转化率 (%)';
+        series = [
+          {
+            name: `${pa.short_name} 伤转率 (%)`,
+            type: 'bar',
+            data: lanes.map(l => l.dmg_conv_a),
+            itemStyle: { color: '#60a5fa', borderRadius: [4, 4, 0, 0] },
+            label: { show: true, position: 'top', formatter: '{c}%', color: '#93c5fd', fontSize: 10 }
+          },
+          {
+            name: `${pb.short_name} 伤转率 (%)`,
+            type: 'bar',
+            data: lanes.map(l => l.dmg_conv_b),
+            itemStyle: { color: '#fb7185', borderRadius: [4, 4, 0, 0] },
+            label: { show: true, position: 'top', formatter: '{c}%', color: '#fda4af', fontSize: 10 }
+          }
+        ];
+      }
+
+      combatChart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          borderColor: 'rgba(148, 163, 184, 0.25)',
+          textStyle: { color: '#f8fafc', fontSize: 12 }
+        },
+        legend: {
+          top: 0,
+          textStyle: { color: '#cbd5e1', fontSize: 11 }
+        },
+        grid: { left: 48, right: 20, top: 38, bottom: 42 },
+        xAxis: {
+          type: 'category',
+          data: categories,
+          axisLabel: { color: '#cbd5e1', fontSize: 11, lineHeight: 15 },
+          axisLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.2)' } }
+        },
+        yAxis: {
+          type: 'value',
+          name: yAxisName,
+          nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+          splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.12)' } },
+          axisLabel: { color: '#94a3b8', fontSize: 11 }
+        },
+        series: series
+      }, true);
+    }
+
+    // ==================== TIMELINE & REPLAY ENGINE ====================
+    function initSeriesTimelines(timelines) {
+      if (!timelines || timelines.length === 0) return;
+      const tabsDiv = document.getElementById('tl-game-tabs');
+      tabsDiv.innerHTML = timelines.map((tl, idx) => `
+        <button
+          onclick="selectGameTimeline(${idx})"
+          id="tl-gtab-${idx}"
+          class="px-3 py-1 rounded-lg transition font-medium ${idx === 0 ? 'nav-pill-active' : 'text-slate-400 hover:text-slate-200'}"
+        >
+          ${tl.label}
+        </button>
+      `).join('');
+
+      selectGameTimeline(0);
+    }
+
+    function selectGameTimeline(idx) {
+      stopTimelinePlay();
+      const timelines = currentPredictionData.series_timelines || [];
+      activeGameTimeline = timelines[idx];
+      if (!activeGameTimeline) return;
+
+      timelines.forEach((_, i) => {
+        const btn = document.getElementById(`tl-gtab-${i}`);
+        if (!btn) return;
+        if (i === idx) {
+          btn.classList.add('nav-pill-active');
+          btn.classList.remove('text-slate-400');
+        } else {
+          btn.classList.remove('nav-pill-active');
+          btn.classList.add('text-slate-400');
+        }
+      });
+
+      document.getElementById('tl-story-badge').textContent =
+        `${activeGameTimeline.story_tag} · 胜方: ${activeGameTimeline.winner_short}`;
+
+      const slider = document.getElementById('tl-slider');
+      slider.max = activeGameTimeline.duration_min;
+      document.getElementById('tl-max-time').textContent = `${activeGameTimeline.duration_min}:00`;
+
+      // Render quick-jump event pills
+      const pillsDiv = document.getElementById('tl-event-pills');
+      pillsDiv.innerHTML = `<span class="text-[11px] text-slate-400 mr-1">资源节点跳转:</span>` +
+        activeGameTimeline.events.map(ev => `
+          <button
+            onclick="scrubToMinute(${ev.minute})"
+            class="px-2 py-0.5 rounded-md text-[11px] font-mono-num border transition ${
+              ev.side === 'blue'
+                ? 'bg-blue-500/10 hover:bg-blue-500/25 border-blue-500/30 text-blue-300'
+                : 'bg-rose-500/10 hover:bg-rose-500/25 border-rose-500/30 text-rose-300'
+            }"
+          >
+            ${ev.icon} ${ev.minute}:00 ${ev.team_short}
+          </button>
+        `).join('');
+
+      scrubToMinute(activeGameTimeline.duration_min);
+    }
+
+    function onSliderScrub(val) {
+      stopTimelinePlay();
+      scrubToMinute(parseInt(val, 10));
+    }
+
+    function scrubToMinute(minute) {
+      if (!activeGameTimeline) return;
+      activeMinute = Math.max(0, Math.min(activeGameTimeline.duration_min, minute));
+      document.getElementById('tl-slider').value = activeMinute;
+
+      const frame = activeGameTimeline.frames[activeMinute];
+      if (!frame) return;
+
+      const bTeam = activeGameTimeline.blue_team;
+      const rTeam = activeGameTimeline.red_team;
+
+      document.getElementById('tl-current-time-badge').textContent = frame.time_label;
+      document.getElementById('tl-table-min-label').textContent = frame.time_label;
+
+      const bWinPct = (frame.blue_win_prob * 100).toFixed(1);
+      const rWinPct = ((1 - frame.blue_win_prob) * 100).toFixed(1);
+      const wpBadge = document.getElementById('tl-live-winprob-badge');
+      if (frame.blue_win_prob >= 0.5) {
+        wpBadge.className = 'text-xs px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300 border border-blue-500/30 font-mono-num';
+        wpBadge.textContent = `${bTeam.short_name} 实时胜率 ${bWinPct}%`;
+      } else {
+        wpBadge.className = 'text-xs px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-300 border border-rose-500/30 font-mono-num';
+        wpBadge.textContent = `${rTeam.short_name} 实时胜率 ${rWinPct}%`;
+      }
+
+      document.getElementById('tl-blue-logo').src = `/api/avatar/team/${bTeam.team_id}.svg`;
+      document.getElementById('tl-red-logo').src = `/api/avatar/team/${rTeam.team_id}.svg`;
+      document.getElementById('tl-blue-header').textContent = bTeam.short_name;
+      document.getElementById('tl-red-header').textContent = rTeam.short_name;
+
+      const gdPill = document.getElementById('tl-gold-diff-pill');
+      const gd = frame.gold_diff;
+      gdPill.textContent = gd >= 0
+        ? `${bTeam.short_name} +${gd.toLocaleString()}g`
+        : `${rTeam.short_name} +${Math.abs(gd).toLocaleString()}g`;
+      gdPill.className = `text-xs font-mono-num font-bold px-2.5 py-0.5 rounded-full border ${
+        gd >= 0
+          ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+          : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+      }`;
+
+      document.getElementById('tl-stat-bgold').textContent = `${(frame.blue_gold / 1000).toFixed(1)}k`;
+      document.getElementById('tl-stat-rgold').textContent = `${(frame.red_gold / 1000).toFixed(1)}k`;
+      document.getElementById('tl-stat-bkills').textContent = frame.blue_kills;
+      document.getElementById('tl-stat-rkills').textContent = frame.red_kills;
+      document.getElementById('tl-stat-btowers').textContent = frame.blue_towers;
+      document.getElementById('tl-stat-rtowers').textContent = frame.red_towers;
+      document.getElementById('tl-stat-bdrag').textContent = frame.blue_dragons;
+      document.getElementById('tl-stat-rdrag').textContent = frame.red_dragons;
+      document.getElementById('tl-stat-bbaron').textContent = frame.blue_barons;
+      document.getElementById('tl-stat-rbaron').textContent = frame.red_barons;
+      document.getElementById('tl-stat-bgrubs').textContent = frame.blue_grubs;
+      document.getElementById('tl-stat-rgrubs').textContent = frame.red_grubs;
+
+      // Update Event Feed
+      const feedDiv = document.getElementById('tl-event-feed');
+      feedDiv.innerHTML = activeGameTimeline.events.map(ev => {
+        const occurred = ev.minute <= activeMinute;
+        const isCurrent = ev.minute === activeMinute;
+        return `
+          <div
+            onclick="scrubToMinute(${ev.minute})"
+            class="p-2.5 rounded-lg border cursor-pointer transition ${
+              isCurrent
+                ? 'bg-amber-500/20 border-amber-400 shadow'
+                : (occurred ? 'bg-slate-950/80 border-slate-800 opacity-100' : 'bg-slate-950/30 border-slate-800/40 opacity-45')
+            }"
+          >
+            <div class="flex items-center justify-between">
+              <span class="font-bold ${ev.side === 'blue' ? 'text-blue-300' : 'text-rose-300'}">${ev.icon} ${ev.title}</span>
+              <span class="font-mono-num text-[11px] text-amber-300">${ev.time_str}</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-0.5">${ev.detail}</p>
+          </div>
+        `;
+      }).join('');
+
+      // Update 10-Player Snapshot Table at activeMinute with Avatars & Champion Icons
+      const maxDmg = Math.max(1000, ...frame.players.flatMap(p => [p.blue_dmg, p.red_dmg]));
+      const maxTaken = Math.max(1000, ...frame.players.flatMap(p => [p.blue_taken, p.red_taken]));
+
+      const pTbody = document.getElementById('tl-players-tbody');
+      pTbody.innerHTML = frame.players.map(p => {
+        const bDmgPct = Math.min(100, Math.round((p.blue_dmg / maxDmg) * 100));
+        const rDmgPct = Math.min(100, Math.round((p.red_dmg / maxDmg) * 100));
+        const bTankPct = Math.min(100, Math.round((p.blue_taken / maxTaken) * 100));
+        const rTankPct = Math.min(100, Math.round((p.red_taken / maxTaken) * 100));
+        const gd = p.gold_diff;
+
+        return `
+          <tr class="hover:bg-slate-900/50">
+            <td class="py-2 px-2">
+              <div class="flex items-center gap-2">
+                <div class="relative shrink-0">
+                  <img src="${p.blue_avatar}" class="w-8 h-8 rounded-lg" alt="${p.blue_name}" />
+                  <img src="${p.blue_champ_icon}" class="w-4 h-4 rounded-full absolute -bottom-1 -right-1 border border-slate-900" onerror="this.style.display='none'" />
+                </div>
+                <div>
+                  <div class="font-sans font-bold text-blue-300 text-xs">${p.blue_name}</div>
+                  <div class="font-sans text-[11px] text-slate-400">${p.blue_champ}</div>
+                </div>
+              </div>
+            </td>
+            <td class="py-2 px-2 text-right">
+              <div class="text-slate-200 font-bold">${p.blue_gold.toLocaleString()}g</div>
+              <div class="text-[11px] text-slate-400">${p.blue_cs} CS</div>
+            </td>
+            <td class="py-2 px-3">
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-[10px]">
+                  <span class="text-slate-400">输出</span>
+                  <span class="text-blue-300">${p.blue_dmg.toLocaleString()}</span>
+                </div>
+                <div class="w-full h-1.5 bg-slate-900 rounded overflow-hidden">
+                  <div class="h-full bg-blue-500" style="width:${bDmgPct}%"></div>
+                </div>
+                <div class="flex items-center justify-between text-[10px]">
+                  <span class="text-slate-400">承伤</span>
+                  <span class="text-cyan-300">${p.blue_taken.toLocaleString()}</span>
+                </div>
+                <div class="w-full h-1.5 bg-slate-900 rounded overflow-hidden">
+                  <div class="h-full bg-cyan-500/70" style="width:${bTankPct}%"></div>
+                </div>
+              </div>
+            </td>
+            <td class="py-2 px-3 text-center">
+              <div class="text-[11px] font-bold text-slate-400">${p.role}</div>
+              <span class="inline-block mt-0.5 px-2 py-0.5 rounded text-[11px] font-bold ${
+                gd >= 0 ? 'bg-blue-500/20 text-blue-300' : 'bg-rose-500/20 text-rose-300'
+              }">
+                ${gd >= 0 ? '+' : ''}${gd}g
+              </span>
+            </td>
+            <td class="py-2 px-3">
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-[10px]">
+                  <span class="text-rose-300">${p.red_dmg.toLocaleString()}</span>
+                  <span class="text-slate-400">输出</span>
+                </div>
+                <div class="w-full h-1.5 bg-slate-900 rounded overflow-hidden flex justify-end">
+                  <div class="h-full bg-rose-500" style="width:${rDmgPct}%"></div>
+                </div>
+                <div class="flex items-center justify-between text-[10px]">
+                  <span class="text-orange-300">${p.red_taken.toLocaleString()}</span>
+                  <span class="text-slate-400">承伤</span>
+                </div>
+                <div class="w-full h-1.5 bg-slate-900 rounded overflow-hidden flex justify-end">
+                  <div class="h-full bg-orange-500/70" style="width:${rTankPct}%"></div>
+                </div>
+              </div>
+            </td>
+            <td class="py-2 px-2 text-left">
+              <div class="text-slate-200 font-bold">${p.red_gold.toLocaleString()}g</div>
+              <div class="text-[11px] text-slate-400">${p.red_cs} CS</div>
+            </td>
+            <td class="py-2 px-2 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <div>
+                  <div class="font-sans font-bold text-rose-300 text-xs">${p.red_name}</div>
+                  <div class="font-sans text-[11px] text-slate-400">${p.red_champ}</div>
+                </div>
+                <div class="relative shrink-0">
+                  <img src="${p.red_avatar}" class="w-8 h-8 rounded-lg" alt="${p.red_name}" />
+                  <img src="${p.red_champ_icon}" class="w-4 h-4 rounded-full absolute -bottom-1 -left-1 border border-slate-900" onerror="this.style.display='none'" />
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      renderTimelineChart();
+    }
+
+    function renderTimelineChart() {
+      if (!activeGameTimeline) return;
+      const frames = activeGameTimeline.frames;
+      const bShort = activeGameTimeline.blue_team.short_name;
+      const rShort = activeGameTimeline.red_team.short_name;
+
+      const xLabels = frames.map(f => f.time_label);
+      const goldDiffs = frames.map(f => f.gold_diff);
+      const winProbs = frames.map(f => +(f.blue_win_prob * 100).toFixed(1));
+
+      const markPoints = activeGameTimeline.events.map(ev => ({
+        coord: [ev.minute, frames[ev.minute] ? frames[ev.minute].gold_diff : 0],
+        value: ev.icon,
+        name: ev.title,
+        itemStyle: {
+          color: ev.side === 'blue' ? '#2563eb' : '#e11d48',
+          borderColor: '#f8fafc',
+          borderWidth: 1.5
+        },
+        label: {
+          show: true,
+          formatter: () => ev.icon,
+          fontSize: 13
+        }
+      }));
+
+      timelineChart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          borderColor: 'rgba(148, 163, 184, 0.25)',
+          textStyle: { color: '#f8fafc', fontSize: 12 },
+          formatter: function (params) {
+            const idx = params[0].dataIndex;
+            const fr = frames[idx];
+            const ev = activeGameTimeline.events.find(e => e.minute === idx);
+            const gdStr = fr.gold_diff >= 0
+              ? `<span style="color:#60a5fa;font-weight:700">${bShort} +${fr.gold_diff.toLocaleString()}g</span>`
+              : `<span style="color:#fb7185;font-weight:700">${rShort} +${Math.abs(fr.gold_diff).toLocaleString()}g</span>`;
+            let html = `<div style="font-weight:700;margin-bottom:4px">⏱️ ${fr.time_label} 局内快照</div>`;
+            html += `<div>经济差: ${gdStr}</div>`;
+            html += `<div>${bShort} 实时胜率: <strong>${(fr.blue_win_prob * 100).toFixed(1)}%</strong></div>`;
+            html += `<div>人头 ${fr.blue_kills}:${fr.red_kills} · 推塔 ${fr.blue_towers}:${fr.red_towers} · 小龙 ${fr.blue_dragons}:${fr.red_dragons}</div>`;
+            if (ev) {
+              html += `<div style="margin-top:6px;padding-top:4px;border-top:1px solid #334155;color:#fde047">${ev.icon} ${ev.title}</div>`;
+            }
+            return html;
+          }
+        },
+        legend: {
+          top: 2,
+          textStyle: { color: '#cbd5e1', fontSize: 11 }
+        },
+        grid: { left: 56, right: 48, top: 34, bottom: 28 },
+        xAxis: {
+          type: 'category',
+          boundaryGap: false,
+          data: xLabels,
+          axisLabel: { color: '#94a3b8', fontSize: 10 },
+          axisLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.2)' } }
+        },
+        yAxis: [
+          {
+            type: 'value',
+            name: `经济差 (+${bShort} / -${rShort})`,
+            nameTextStyle: { color: '#94a3b8', fontSize: 10 },
+            splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.12)' } },
+            axisLabel: {
+              color: '#94a3b8',
+              fontSize: 10,
+              formatter: val => `${(val / 1000).toFixed(0)}k`
+            }
+          },
+          {
+            type: 'value',
+            name: `${bShort} 实时胜率%`,
+            min: 0,
+            max: 100,
+            nameTextStyle: { color: '#eab308', fontSize: 10 },
+            splitLine: { show: false },
+            axisLabel: { color: '#eab308', fontSize: 10, formatter: '{value}%' }
+          }
+        ],
+        visualMap: {
+          show: false,
+          seriesIndex: 0,
+          pieces: [
+            { gt: 0, color: '#3b82f6' },
+            { lte: 0, color: '#f43f5e' }
+          ]
+        },
+        series: [
+          {
+            name: '团队经济差 (Gold Diff)',
+            type: 'line',
+            smooth: 0.3,
+            data: goldDiffs,
+            lineStyle: { width: 3 },
+            areaStyle: { opacity: 0.22 },
+            markPoint: {
+              symbol: 'circle',
+              symbolSize: 26,
+              data: markPoints
+            },
+            markLine: {
+              symbol: ['none', 'none'],
+              silent: true,
+              data: [
+                { yAxis: 0, lineStyle: { color: 'rgba(255,255,255,0.25)', type: 'dashed', width: 1 } },
+                {
+                  xAxis: activeMinute,
+                  lineStyle: { color: '#eab308', width: 2, type: 'solid' },
+                  label: {
+                    show: true,
+                    formatter: `当前 ${frames[activeMinute].time_label}`,
+                    color: '#fef08a',
+                    backgroundColor: 'rgba(15,23,42,0.85)',
+                    padding: [2, 6],
+                    borderRadius: 4
+                  }
+                }
+              ]
+            }
+          },
+          {
+            name: `${bShort} 实时胜率 (%)`,
+            type: 'line',
+            yAxisIndex: 1,
+            smooth: 0.35,
+            showSymbol: false,
+            data: winProbs,
+            itemStyle: { color: '#eab308' },
+            lineStyle: { width: 1.8, type: 'dashed', color: '#eab308' }
+          }
+        ]
+      });
+    }
+
+    function toggleTimelinePlay() {
+      if (playTimer) {
+        stopTimelinePlay();
+        return;
+      }
+      if (!activeGameTimeline) return;
+      if (activeMinute >= activeGameTimeline.duration_min) {
+        activeMinute = 0;
+      }
+      document.getElementById('btn-tl-play-icon').textContent = '⏸';
+      document.getElementById('btn-tl-play-text').textContent = '暂停回放';
+
+      playTimer = setInterval(() => {
+        if (!activeGameTimeline) {
+          stopTimelinePlay();
+          return;
+        }
+        if (activeMinute < activeGameTimeline.duration_min) {
+          scrubToMinute(activeMinute + 1);
+        } else {
+          stopTimelinePlay();
+        }
+      }, playSpeedMs);
+    }
+
+    function stopTimelinePlay() {
+      if (playTimer) {
+        clearInterval(playTimer);
+        playTimer = null;
+      }
+      const iconEl = document.getElementById('btn-tl-play-icon');
+      const textEl = document.getElementById('btn-tl-play-text');
+      if (iconEl) iconEl.textContent = '▶';
+      if (textEl) textEl.textContent = '自动回放';
+    }
+
+    function cyclePlaySpeed() {
+      const btn = document.getElementById('btn-tl-speed');
+      if (playSpeedMs === 750) {
+        playSpeedMs = 350;
+        btn.textContent = '2x 倍速';
+      } else {
+        playSpeedMs = 750;
+        btn.textContent = '1x 倍速';
+      }
+      if (playTimer) {
+        stopTimelinePlay();
+        toggleTimelinePlay();
+      }
+    }
+
+    // ==================== AGENT SECTION RENDERING ====================
+    function formatMarkdown(md) {
+      return md
+        .replace(/^### (.*$)/gim, '<h4 class="text-amber-300 font-bold text-sm mt-4 mb-1.5">$1</h4>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')
+        .replace(/^- (.*$)/gim, '<div class="ml-2 flex items-start gap-2 my-1"><span class="text-cyan-400 mt-0.5">•</span><span>$1</span></div>')
+        .replace(/^  ([0-9]+\. .*$)/gim, '<div class="ml-6 text-slate-300 my-0.5">$1</div>')
+        .replace(/\n\n/g, '<div class="my-2"></div>');
+    }
+
+    function renderAgentSection(data) {
+      const cardsDiv = document.getElementById('res-subagents-cards');
+      cardsDiv.innerHTML = (data.sub_agent_opinions || []).map(op => `
+        <div class="bento-card p-4">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-bold text-amber-300">${op.agent_name}</span>
+            <span class="text-[11px] font-mono-num px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-200 border border-amber-500/30">
+              看好 ${op.favored_team} (${op.confidence})
+            </span>
+          </div>
+          <p class="text-xs font-semibold text-white mb-2">${op.headline}</p>
+          <ul class="space-y-1 text-xs text-slate-300">
+            ${op.key_points.map(pt => `<li class="flex items-start gap-1.5"><span class="text-cyan-400">▸</span><span>${pt}</span></li>`).join('')}
+          </ul>
+        </div>
+      `).join('');
+
+      const factorList = document.getElementById('res-factor-list');
+      factorList.innerHTML = (data.factor_attributions || []).map(f => {
+        const isA = f.impact_score >= 0;
+        const barW = Math.min(100, Math.max(8, Math.round(Math.abs(f.impact_score) * 180)));
+        return `
+          <div class="p-2.5 rounded-xl bg-slate-900/75 border border-slate-800/80 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-200 font-medium">${f.factor}</span>
+              <span class="font-mono-num font-bold ${isA ? 'text-blue-400' : 'text-rose-400'}">
+                ${f.favored} ${f.impact_score >= 0 ? '+' : ''}${f.impact_score}
+              </span>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-slate-400">
+              <span>${f.detail}</span>
+              <div class="w-24 h-1.5 bg-slate-950 rounded overflow-hidden">
+                <div class="h-full ${isA ? 'bg-blue-500' : 'bg-rose-500'}" style="width:${barW}%"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('res-engine-badge').textContent = data.matchup_meta.engine_mode;
+      document.getElementById('res-report-md').innerHTML = formatMarkdown(data.tactical_report_markdown || '');
+
+      const traceDiv = document.getElementById('res-agent-trace');
+      traceDiv.innerHTML = (data.agent_execution_trace || []).map((st, idx) => `
+        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-cyan-300">#${idx + 1} ${st.agent.split(' ')[0]}</span>
+            <span class="text-[11px] font-mono-num text-emerald-400">${st.latency_ms} ms</span>
+          </div>
+          <div class="text-[11px] font-mono-num text-amber-300/90 truncate">${st.tool}</div>
+          <p class="text-slate-300 leading-relaxed text-[11px]">${st.summary}</p>
+        </div>
+      `).join('');
+    }
+
+    // ==================== TAB 2: TEAMS & ERA ROSTERS GALLERY ====================
+    function renderGalleryTeamGrid() {
+      const regFilter = document.getElementById('gallery-region-filter').value;
+      const filtered = regFilter === 'ALL' ? allTeams : allTeams.filter(t => t.region === regFilter);
+      const grid = document.getElementById('gallery-teams-grid');
+
+      grid.innerHTML = filtered.map(t => {
+        const isSel = t.team_id === selectedGalleryTeamId;
+        return `
+          <div
+            onclick="loadGalleryTeamDetail('${t.team_id}')"
+            class="bento-card p-3 flex flex-col items-center text-center cursor-pointer transition ${
+              isSel ? 'border-amber-400 bg-slate-900/95 ring-1 ring-amber-400/50' : 'hover:border-slate-600'
+            }"
+          >
+            <img src="${t.logo_url || `/api/avatar/team/${t.team_id}.svg`}" alt="${t.name}" class="w-12 h-12 mb-2" />
+            <div class="font-bold text-xs text-white truncate w-full">${t.name}</div>
+            <div class="text-[10px] font-mono-num text-slate-400 mt-0.5">${t.region} · Elo ${Math.round(t.current_elo)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function loadGalleryTeamDetail(teamId) {
+      selectedGalleryTeamId = teamId;
+      renderGalleryTeamGrid();
+
+      const res = await fetch(`/api/teams/${teamId}/profile?season=S16`).then(r => r.json());
+      const prof = res.profile;
+      const eras = prof.all_era_rosters || {};
+      const eraKeys = Object.keys(eras);
+
+      const detailDiv = document.getElementById('gallery-team-detail');
+      let erasHtml = '';
+
+      if (eraKeys.length > 0) {
+        erasHtml = eraKeys.map(seasonKey => {
+          const players = eras[seasonKey];
+          const yr = 2010 + parseInt(seasonKey.slice(1), 10);
+          return `
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 font-mono-num font-bold text-xs">
+                    ${seasonKey} (${yr} 赛季阵容)
+                  </span>
+                  <span class="text-xs text-slate-300 font-semibold">
+                    ${players.map(p => p.player_name).join(' · ')}
+                  </span>
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    onclick="switchTab('predictor'); applyPreset('${prof.team_id}', '${prof.team_id === 'GEN' ? 'BLG' : 'GEN'}', 5, 'Worlds Finals BO5', '${seasonKey}', 'S16')"
+                    class="px-3 py-1 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 text-xs font-medium transition"
+                  >
+                    ⚡ 选为蓝方出战 (${seasonKey})
+                  </button>
+                  <button
+                    onclick="switchTab('predictor'); applyPreset('${prof.team_id === 'BLG' ? 'T1' : 'BLG'}', '${prof.team_id}', 5, 'Worlds Finals BO5', 'S16', '${seasonKey}')"
+                    class="px-3 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 text-xs font-medium transition"
+                  >
+                    ⚔️ 选为红方出战 (${seasonKey})
+                  </button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                ${players.map(p => `
+                  <div class="bg-slate-950/80 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between space-y-2">
+                    <div class="flex items-center gap-2.5">
+                      <img src="${p.avatar_url}" alt="${p.player_name}" class="w-12 h-12 rounded-xl shrink-0" />
+                      <div class="min-w-0">
+                        <div class="flex items-center gap-1.5">
+                          <span class="text-[10px] font-mono-num uppercase px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 font-bold">${p.role}</span>
+                          <span class="text-xs font-mono-num font-bold text-amber-300">★ ${p.rating}</span>
+                        </div>
+                        <div class="font-extrabold text-sm text-white truncate mt-0.5">${p.player_name}</div>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-1 text-center font-mono-num text-[11px] bg-slate-900/90 p-1.5 rounded-lg border border-slate-800/70">
+                      <div>
+                        <div class="text-[9px] text-slate-400">KDA</div>
+                        <div class="text-slate-200 font-bold">${p.kda}</div>
+                      </div>
+                      <div>
+                        <div class="text-[9px] text-slate-400">DPM</div>
+                        <div class="text-blue-300 font-bold">${p.dpm}</div>
+                      </div>
+                      <div>
+                        <div class="text-[9px] text-slate-400">GD@15</div>
+                        <div class="${p.gd15 >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">${p.gd15 >= 0 ? '+' : ''}${p.gd15}</div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div class="text-[10px] text-slate-400 mb-1">招牌英雄池:</div>
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        ${(p.champion_icons || []).map(ci => `
+                          <div class="flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 text-[10px] text-slate-300">
+                            <img src="${ci.icon}" class="w-3.5 h-3.5 rounded-full" onerror="this.style.display='none'" />
+                            <span>${ci.name}</span>
+                          </div>
+                        `).join('')}
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        erasHtml = `<p class="text-xs text-slate-400">当前展示该战队默认代表阵容。</p>`;
+      }
+
+      detailDiv.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div class="flex items-center gap-4">
+            <img src="${prof.logo_url}" class="w-16 h-16" alt="${prof.name}" />
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-xl font-black text-white">${prof.name} (${prof.short_name})</h3>
+                <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-xs font-mono-num font-bold">${prof.region}</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">
+                当前跨赛区 Elo: <strong class="text-emerald-300 font-mono-num">${prof.current_elo}</strong> ·
+                历史峰值 Elo: <strong class="text-amber-300 font-mono-num">${prof.peak_elo} (${prof.peak_season})</strong> ·
+                国际赛荣誉: <strong class="text-amber-300">🏆 ${prof.worlds_titles} 座全球总决赛冠军 / 🎖️ ${prof.msi_titles} 座 MSI 冠军</strong>
+              </p>
+              <p class="text-xs text-slate-400 mt-0.5">战术基因: <span class="text-slate-200">${prof.style_tag}</span></p>
+            </div>
+          </div>
+        </div>
+        <div class="space-y-4">
+          ${erasHtml}
+        </div>
+      `;
+    }
+
+    // ==================== TAB 3 & TAB 4 FUNCTIONS ====================
+    async function loadChronicle() {
+      const season = document.getElementById('chr-season').value;
+      const tier = document.getElementById('chr-tier').value;
+      const region = document.getElementById('chr-region').value;
+
+      const tRes = await fetch(`/api/tournaments?season=${season}&tier=${tier}&region=${region}`).then(r => r.json());
+      const listDiv = document.getElementById('chr-tournaments-list');
+
+      listDiv.innerHTML = (tRes.tournaments || []).map(t => {
+        const badgeColor = t.tier === 'Worlds'
+          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+          : (t.tier === 'MSI' ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40');
+        return `
+          <div onclick="loadMatchesForTournament('${t.tournament_id}', '${t.name}')" class="bento-card p-4 cursor-pointer hover:border-amber-400/50 transition">
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold px-2 py-0.5 rounded border ${badgeColor}">${t.season} (${t.year}) · ${t.tier}</span>
+                <span class="text-xs text-slate-400">${t.location || t.region}</span>
+              </div>
+              <span class="text-xs font-mono-num text-slate-400">Patch ${t.patch || '-'}</span>
+            </div>
+            <h4 class="text-base font-bold text-white mb-1">${t.name}</h4>
+            <div class="flex flex-wrap items-center gap-4 text-xs my-1.5">
+              ${t.champion_team_id ? `
+              <span class="flex items-center gap-1.5 text-amber-300 font-semibold">
+                <img src="/api/avatar/team/${t.champion_team_id}.svg" class="w-5 h-5" />
+                🏆 冠军: ${t.champion_name || t.champion_team_id}
+              </span>` : `<span class="text-slate-400 font-semibold">⏳ 进行中 · 冠军待决</span>`}
+              ${t.runner_up_team_id ? `
+              <span class="flex items-center gap-1.5 text-slate-300">
+                <img src="/api/avatar/team/${t.runner_up_team_id}.svg" class="w-5 h-5" />
+                🥈 亚军: ${t.runner_up_name || t.runner_up_team_id}
+              </span>` : ''}
+              ${t.mvp_player ? `<span class="text-cyan-300">⭐ FMVP: ${t.mvp_player}</span>` : ''}
+            </div>
+            ${t.summary ? `<p class="text-xs text-slate-400 mt-1 leading-relaxed">${t.summary}</p>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      await loadMatchesForTournament('', '');
+    }
+
+    async function loadMatchesForTournament(tournamentId, title = '') {
+      const season = document.getElementById('chr-season').value;
+      const tier = document.getElementById('chr-tier').value;
+      const url = tournamentId
+        ? `/api/matches?tournament_id=${encodeURIComponent(tournamentId)}&limit=100`
+        : `/api/matches?season=${season}&tier=${tier}&limit=80`;
+
+      document.getElementById('chr-matches-title').textContent = title
+        ? `${title} — 系列赛记录`
+        : '系列赛赛果记录 (Series Matches)';
+
+      const mRes = await fetch(url).then(r => r.json());
+      const mDiv = document.getElementById('chr-matches-list');
+      mDiv.innerHTML = (mRes.matches || []).map(m => {
+        const t1Win = m.winner_id === m.team1_id;
+        const t2Win = m.winner_id === m.team2_id;
+        const scoreLabel = (m.winner_id === m.team1_id || m.winner_id === m.team2_id)
+          ? `${m.team1_score} : ${m.team2_score}` : '待赛';
+        return `
+          <div class="p-3 rounded-xl bg-slate-900/75 border border-slate-800 flex items-center justify-between text-xs">
+            <div>
+              <div class="text-[11px] text-slate-400">${m.date_played} · ${m.tournament_name} · <span class="text-amber-300">${m.stage} (BO${m.best_of})</span></div>
+              <div class="mt-1.5 flex items-center gap-2 text-sm">
+                <img src="/api/avatar/team/${m.team1_id}.svg" class="w-5 h-5" />
+                <span class="${t1Win ? 'font-bold text-emerald-300' : 'text-slate-300'}">${m.team1_raw_name}</span>
+                <span class="px-2 py-0.5 rounded bg-slate-800 font-mono-num font-bold text-amber-300">${scoreLabel}</span>
+                <span class="${t2Win ? 'font-bold text-emerald-300' : 'text-slate-300'}">${m.team2_raw_name}</span>
+                <img src="/api/avatar/team/${m.team2_id}.svg" class="w-5 h-5" />
+              </div>
+            </div>
+            <button onclick="switchTab('predictor'); applyPreset('${m.team1_id}','${m.team2_id}',${m.best_of},'Worlds Finals BO5','${m.season}','${m.season}')" class="px-2.5 py-1.5 rounded-lg bg-blue-500/15 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 font-medium">
+              AI 复盘 (${m.season})
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function loadRankings() {
+      const region = document.getElementById('rank-region').value;
+      const res = await fetch(`/api/teams?region=${region}`).then(r => r.json());
+      const tbody = document.getElementById('rank-tbody');
+      tbody.innerHTML = (res.teams || []).map((t, idx) => `
+        <tr onclick="switchTab('rosters'); loadGalleryTeamDetail('${t.team_id}')" class="hover:bg-slate-900/60 cursor-pointer">
+          <td class="py-2.5 px-2 font-mono-num font-bold text-amber-300">#${idx + 1}</td>
+          <td class="py-2.5 px-3">
+            <div class="flex items-center gap-2.5">
+              <img src="${t.logo_url || `/api/avatar/team/${t.team_id}.svg`}" class="w-8 h-8 shrink-0" />
+              <div>
+                <div class="font-bold text-white text-sm">${t.name} (${t.short_name})</div>
+                <div class="text-[11px] text-slate-400">曾用名谱系: ${(t.aliases || []).slice(0, 5).join(', ')}</div>
+              </div>
+            </div>
+          </td>
+          <td class="py-2.5 px-2"><span class="px-2 py-0.5 rounded bg-slate-800 text-cyan-300 font-semibold">${t.region}</span></td>
+          <td class="py-2.5 px-2 text-right font-mono-num font-bold text-emerald-300 text-sm">${t.current_elo.toFixed(1)}</td>
+          <td class="py-2.5 px-2 text-right font-mono-num text-amber-200">${t.peak_elo.toFixed(1)} <span class="text-slate-400">(${t.peak_season})</span></td>
+          <td class="py-2.5 px-2 text-center font-bold text-amber-300">
+            ${t.worlds_titles > 0 ? `🏆×${t.worlds_titles}` : '-'} ${t.msi_titles > 0 ? ` / 🎖️×${t.msi_titles}` : ''}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function runBacktest() {
+      const res = await fetch('/api/backtest').then(r => r.json());
+      document.getElementById('backtest-summary').innerHTML = `
+        <div class="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between text-xs">
+          <span>回测国际赛焦点系列赛: <strong>${res.total_evaluated}</strong> 场</span>
+          <span>命中: <strong>${res.correct_predictions}</strong> 场</span>
+          <span class="text-sm font-black font-mono-num text-emerald-300">准确率: ${res.accuracy_pct}%</span>
+        </div>
+      `;
+      document.getElementById('backtest-list').innerHTML = (res.sample_results || []).map(item => `
+        <div class="p-2 rounded-lg bg-slate-900/70 border border-slate-800 flex items-center justify-between">
+          <div>
+            <span class="text-amber-300 font-semibold">[${item.season}]</span>
+            <span class="text-slate-200 ml-1">${item.matchup}</span>
+            <span class="text-slate-400 ml-1">(实际 ${item.actual_score})</span>
+          </div>
+          <span class="px-2 py-0.5 rounded font-mono-num font-semibold ${item.correct ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}">
+            预测 ${item.predicted_winner} (${item.predicted_prob}%) ${item.correct ? '✓' : '✗'}
+          </span>
+        </div>
+      `).join('');
+    }
+
+    async function triggerLeaguepediaSync() {
+      const overview_page = document.getElementById('sync-page').value.trim();
+      const season = document.getElementById('sync-season').value.trim();
+      const year = parseInt(document.getElementById('sync-year').value, 10);
+      const statusEl = document.getElementById('sync-status');
+      statusEl.textContent = '⏳ 正在请求 Leaguepedia Cargo API...';
+
+      try {
+        const resp = await fetch('/api/sync/leaguepedia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            overview_page,
+            tournament_id: `LP_${season}_${year}`,
+            tournament_name: overview_page,
+            season,
+            year,
+            tier: 'Worlds',
+            region: 'GLOBAL'
+          })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          statusEl.textContent = `⚠️ ${data.detail || '同步失败'}`;
+        } else {
+          statusEl.textContent = `✅ 同步成功！新增/更新 ${data.sync_result.inserted_series} 场系列赛，已重新校准全库 Elo。`;
+          loadRankings();
+        }
+      } catch (e) {
+        statusEl.textContent = `⚠️ 网络请求异常: ${e.message}`;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
