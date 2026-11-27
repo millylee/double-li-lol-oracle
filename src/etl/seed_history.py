@@ -2,10 +2,14 @@ import json
 import random
 import sqlite3
 from datetime import date
+from pathlib import Path
+from src.config import DB_PATH
 from typing import Any, Dict, List, Tuple
 from src.db.schema import get_connection, init_db
 from src.etl.team_normalizer import TeamNormalizer
 from src.etl.rosters_catalog import ERA_ROSTERS_CATALOG, get_season_meta_pool
+
+HISTORICAL_SEED = 20261107
 
 # Complete S1 - S16 World Championships & MSI Historical Record
 WORLDS_CATALOG: List[Dict[str, Any]] = [
@@ -242,20 +246,33 @@ WORLDS_CATALOG: List[Dict[str, Any]] = [
     {
         "season": "S16", "year": 2026, "name": "2026 Season World Championship",
         "patch": "v26.19", "location": "Allen, TX & New York, USA",
-        "champion": ("GEN", "Gen.G"), "runner_up": ("BLG", "Bilibili Gaming"),
-        "mvp": "Chovy",
-        "summary": "无畏征召（全局 BP）全面实装的世界赛舞台！八强战 iG 3:1 力克 TES、BLG 击败 DK，Gen.G 与 BLG 会师纽约巴克莱中心总决赛。",
+        "champion": ("BLG", "Bilibili Gaming"), "runner_up": ("GEN", "Gen.G"),
+        "mvp": "Knight",
+        # Series results: https://lolesports.com/en-US/leagues/worlds,lck
+        # Finals MVP: https://x.com/lplenglish/status/2121762170925113454
+        "summary": "BLG 在纽约巴克莱中心以 3:1 击败 Gen.G，夺得队史首座全球总决赛冠军。",
         "matches": [
-            ("2026-11-14", "Finals", 5, "GEN", "Gen.G", "BLG", "Bilibili Gaming", 3, 1),
-            ("2026-11-08", "Semifinals", 5, "BLG", "Bilibili Gaming", "T1", "T1", 3, 2),
-            ("2026-11-07", "Semifinals", 5, "GEN", "Gen.G", "IG", "Invictus Gaming", 3, 2),
-            ("2026-11-06", "Quarterfinals", 5, "T1", "T1", "G2", "G2 Esports", 3, 1),
-            ("2026-11-05", "Quarterfinals", 5, "BLG", "Bilibili Gaming", "DK", "Dplus KIA", 3, 1),
-            ("2026-11-04", "Quarterfinals", 5, "GEN", "Gen.G", "C9", "LYON", 3, 0),
+            ("2026-11-14", "Finals", 5, "BLG", "Bilibili Gaming", "GEN", "Gen.G", 3, 1),
+            ("2026-11-08", "Semifinals", 5, "BLG", "Bilibili Gaming", "T1", "T1", 3, 1),
+            ("2026-11-07", "Semifinals", 5, "GEN", "Gen.G", "IG", "Invictus Gaming", 3, 0),
+            ("2026-11-06", "Quarterfinals", 5, "T1", "T1", "KC", "Karmine Corp", 3, 1),
+            ("2026-11-05", "Quarterfinals", 5, "BLG", "Bilibili Gaming", "DK", "Dplus KIA", 3, 0),
+            ("2026-11-04", "Quarterfinals", 5, "GEN", "Gen.G", "LYON", "LYON", 3, 0),
             ("2026-11-03", "Quarterfinals", 5, "IG", "Invictus Gaming", "TES", "Top Esports", 3, 1),
         ],
     },
 ]
+
+# Previous seed inputs for the six repaired series. Retaining their random
+# draws preserves the pre-existing synthetic rows for unaffected series.
+LEGACY_S16_MATCHES = {
+    1: ("2026-11-14", "Finals", 5, "GEN", "Gen.G", "BLG", "Bilibili Gaming", 3, 1),
+    2: ("2026-11-08", "Semifinals", 5, "BLG", "Bilibili Gaming", "T1", "T1", 3, 2),
+    3: ("2026-11-07", "Semifinals", 5, "GEN", "Gen.G", "IG", "Invictus Gaming", 3, 2),
+    4: ("2026-11-06", "Quarterfinals", 5, "T1", "T1", "G2", "G2 Esports", 3, 1),
+    5: ("2026-11-05", "Quarterfinals", 5, "BLG", "Bilibili Gaming", "DK", "Dplus KIA", 3, 1),
+    6: ("2026-11-04", "Quarterfinals", 5, "GEN", "Gen.G", "C9", "LYON", 3, 0),
+}
 
 # Complete MSI (Mid-Season Invitational) Historical Record (2015 S5 - 2026 S16)
 MSI_CATALOG: List[Dict[str, Any]] = [
@@ -721,6 +738,17 @@ def _is_future_fixture(date_played: str) -> bool:
     return date_played > _today_str()
 
 
+def _worlds_series_rng(rng, season, year, match_id, tournament_id, patch, legacy):
+    """Fork corrected rows off the shared seed stream, keeping later rows stable."""
+    corrected_rng = random.Random(0)
+    corrected_rng.setstate(rng.getstate())
+    day, _, _, t1, _, t2, _, s1, s2 = legacy
+    old_games = [] if _is_future_fixture(day) else _generate_games_for_series(
+        rng, match_id, tournament_id, season, year, day, patch, t1, t2, s1, s2
+    )
+    return corrected_rng, old_games
+
+
 def _upsert_series(
     conn: sqlite3.Connection,
     rng: random.Random,
@@ -798,20 +826,20 @@ def _upsert_series(
     return len(game_rows)
 
 
-def seed_all_historical_data() -> Dict[str, int]:
+def seed_all_historical_data(db_path: Path = DB_PATH) -> Dict[str, int]:
     """
     Populates the SQLite database with S1-S16 Worlds, MSI, Regional Leagues (LCK, LPL, LEC, LCS),
     series matches, game-level advanced metrics, and player rosters.
     """
-    init_db()
-    rng = random.Random(20261107)
+    init_db(db_path)
+    rng = random.Random(HISTORICAL_SEED)
     normalizer = TeamNormalizer()
 
     tournaments_inserted = 0
     series_inserted = 0
     games_inserted = 0
 
-    with get_connection() as conn:
+    with get_connection(db_path) as conn:
         # 1. Seed canonical teams
         for t in normalizer.all_canonical_teams():
             conn.execute(
@@ -858,7 +886,7 @@ def seed_all_historical_data() -> Dict[str, int]:
                     w["patch"],
                     w["location"],
                     "" if has_future else w.get("mvp", ""),
-                    w.get("summary", ""),
+                    "S16 全球总决赛尚未结束。" if season == "S16" and has_future else w.get("summary", ""),
                 ),
             )
             tournaments_inserted += 1
@@ -866,8 +894,13 @@ def seed_all_historical_data() -> Dict[str, int]:
             for idx, m in enumerate(w["matches"], start=1):
                 date_str, stage, best_of, t1_id, t1_raw, t2_id, t2_raw, s1, s2 = m
                 match_id = f"{t_id}_M{idx:02d}"
+                series_rng = rng
+                if season == "S16" and idx in LEGACY_S16_MATCHES:
+                    series_rng, _ = _worlds_series_rng(
+                        rng, season, year, match_id, t_id, w["patch"], LEGACY_S16_MATCHES[idx]
+                    )
                 games_inserted += _upsert_series(
-                    conn, rng, match_id, t_id, season, year, date_str, stage, best_of,
+                    conn, series_rng, match_id, t_id, season, year, date_str, stage, best_of,
                     t1_id, t2_id, t1_raw, t2_raw, s1, s2, w["patch"], 1, "historical_archive",
                 )
                 series_inserted += 1

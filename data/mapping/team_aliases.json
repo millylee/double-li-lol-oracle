@@ -137,7 +137,7 @@
       "short_name": "BLG",
       "region": "LPL",
       "founded_season": "S8",
-      "worlds_titles": 0,
+      "worlds_titles": 1,
       "msi_titles": 0,
       "aliases": [
         "Bilibili Gaming",
@@ -510,6 +510,26 @@
         "CTBC Flying Oyster",
         "CFO"
       ]
+    },
+    {
+      "team_id": "KC",
+      "name": "Karmine Corp",
+      "short_name": "KC",
+      "region": "LEC",
+      "founded_season": "S10",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": ["Karmine Corp", "KC"]
+    },
+    {
+      "team_id": "LYON",
+      "name": "LYON",
+      "short_name": "LYON",
+      "region": "LCS",
+      "founded_season": "S15",
+      "worlds_titles": 0,
+      "msi_titles": 0,
+      "aliases": ["LYON"]
     }
   ]
 }

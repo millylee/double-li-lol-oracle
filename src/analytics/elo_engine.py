@@ -1,4 +1,6 @@
 import math
+import sqlite3
+from contextlib import nullcontext
 from typing import Any, Dict, List
 from pathlib import Path
 from src.config import DB_PATH, REGION_BASE_ELO
@@ -78,8 +80,9 @@ class CrossRegionEloEngine:
                     )
         return result
 
-    def recompute_all_ratings(self) -> Dict[str, Any]:
-        with get_connection(self.db_path) as conn:
+    def recompute_all_ratings(self, connection: sqlite3.Connection | None = None) -> Dict[str, Any]:
+        """Rebuild derived ratings; a caller-supplied connection owns its transaction."""
+        with (get_connection(self.db_path) if connection is None else nullcontext(connection)) as conn:
             teams_rows = conn.execute("SELECT team_id, region FROM teams").fetchall()
             team_region: Dict[str, str] = {r["team_id"]: r["region"] for r in teams_rows}
 
@@ -218,7 +221,8 @@ class CrossRegionEloEngine:
                     (cur_elo, peak_elos.get(tid, cur_elo), peak_seasons.get(tid, "S16"), tid),
                 )
 
-            conn.commit()
+            if connection is None:
+                conn.commit()
 
         top_teams = sorted(team_elos.items(), key=lambda x: x[1], reverse=True)[:10]
         return {
